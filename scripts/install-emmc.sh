@@ -17,7 +17,9 @@ set -euo pipefail
 BLOCK="${DEVICE_BLOCK:-/dev/mmcblk0}"
 
 if [ "$(id -u)" -ne 0 ]; then
-	exec sudo -n DEVICE="$DEVICE" DEVICE_BLOCK="$BLOCK" \
+	exec sudo -n \
+		BUILD_ROOT="$BUILD_ROOT" WORK_DIR="$WORK_DIR" SRC_DIR="$SRC_DIR" \
+		DEVICE="$DEVICE" DEVICE_BLOCK="$BLOCK" \
 		BOOT_SIZE_MIB="$BOOT_SIZE_MIB" BOOT_FS="$BOOT_FS" CONFIRM="${CONFIRM:-}" \
 		"$(readlink -f "$0")" "$@"
 fi

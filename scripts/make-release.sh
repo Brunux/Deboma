@@ -34,13 +34,16 @@ set -euo pipefail
 . "$(dirname "$0")/lib-dist.sh"
 
 OUTDIR="${1:-$WORK_DIR/release-$DEVICE}"
-IMAGE_SIZE_MIB="${IMAGE_SIZE_MIB:-4096}"
+IMAGE_SIZE_MIB="${IMAGE_SIZE_MIB:-6144}"
 export IMAGE_SIZE_MIB
 
 # build-rootfs.sh documents the same pitfall: sudo drops the environment, so
 # every resolved input is forwarded explicitly.
 if [ "$(id -u)" -ne 0 ]; then
-	exec sudo -n DEVICE="$DEVICE" IMAGE_SIZE_MIB="$IMAGE_SIZE_MIB" "$(readlink -f "$0")" "$OUTDIR"
+	exec sudo -n \
+		BUILD_ROOT="$BUILD_ROOT" WORK_DIR="$WORK_DIR" SRC_DIR="$SRC_DIR" \
+		DEVICE="$DEVICE" ROOTFS="$ROOTFS" \
+		IMAGE_SIZE_MIB="$IMAGE_SIZE_MIB" "$(readlink -f "$0")" "$OUTDIR"
 fi
 
 IMG="$OUTDIR/$DEVICE.img"

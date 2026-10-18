@@ -42,7 +42,12 @@ DEST="${1:-}"
 [ -n "$DEST" ] || die "usage: backup-system.sh <destination-directory>"
 
 if [ "$(id -u)" -ne 0 ]; then
-	exec sudo -n "$(readlink -f "$0")" "$DEST"
+	# Forward the resolved build inputs along with the destination: sudo does not
+	# preserve the caller's environment, and the build root decides where this
+	# script's scratch directories live.
+	exec sudo -n \
+		BUILD_ROOT="$BUILD_ROOT" WORK_DIR="$WORK_DIR" SRC_DIR="$SRC_DIR" \
+		"$(readlink -f "$0")" "$DEST"
 fi
 
 [ -d "$DEST" ] || die "destination is not a directory: $DEST"

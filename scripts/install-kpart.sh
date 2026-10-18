@@ -25,9 +25,13 @@ set -euo pipefail
 . "$(dirname "$0")/lib-cgpt.sh"
 
 if [ "$(id -u)" -ne 0 ]; then
-	# sudo -n starts from a clean environment, so CONFIRM=yes has to be forwarded
+	# sudo -n starts from a clean environment, so CONFIRM=yes - and every resolved
+	# build input, e.g. a build root outside $HOME - has to be forwarded
 	# explicitly or the guard below can never pass through the re-exec.
-	exec sudo -n DEVICE="$DEVICE" CONFIRM="${CONFIRM:-}" "$(readlink -f "$0")" "$@"
+	exec sudo -n \
+		BUILD_ROOT="$BUILD_ROOT" WORK_DIR="$WORK_DIR" SRC_DIR="$SRC_DIR" \
+		DEVICE="$DEVICE" CONFIRM="${CONFIRM:-}" KERNEL_RELEASE="$KERNEL_RELEASE" \
+		"$(readlink -f "$0")" "$@"
 fi
 
 # Never act from a chroot: /proc/cmdline there belongs to the host, so the GUID

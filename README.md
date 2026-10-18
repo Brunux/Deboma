@@ -50,7 +50,7 @@ card and pick **external disk** in the firmware menu. It comes up silently to a 
 user `brunux`, password `debian`, passwordless sudo. **Change the password** (`passwd`) before using
 it for anything real.
 
-The image is 4 GiB, so a larger card keeps the space after `p3` unused. To use the whole card,
+The image is 6 GiB, so a larger card keeps the space after `p3` unused. To use the whole card,
 write the tarball instead: `write-sd.sh` sizes `p3` to the device it is given.
 
 ```sh

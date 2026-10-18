@@ -15,7 +15,14 @@ set -euo pipefail
 BLOCK="${1:-/dev/mmcblk1}"
 
 if [ "$(id -u)" -ne 0 ]; then
-	exec sudo -n DEVICE="$DEVICE" "$(readlink -f "$0")" "${1:-}"
+	# Forward every resolved build input: sudo does not preserve the caller's
+	# environment, so a ROOTFS to write instead of the built one, a build root
+	# outside $HOME, or a different boot partition size would be dropped here.
+	exec sudo -n \
+		BUILD_ROOT="$BUILD_ROOT" WORK_DIR="$WORK_DIR" SRC_DIR="$SRC_DIR" \
+		DEVICE="$DEVICE" ROOTFS="$ROOTFS" BOOT_SIZE_MIB="$BOOT_SIZE_MIB" \
+		BOOT_FS="$BOOT_FS" \
+		"$(readlink -f "$0")" "${1:-}"
 fi
 
 [ -b "$BLOCK" ] || die "not a block device: $BLOCK"

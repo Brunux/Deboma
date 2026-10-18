@@ -420,7 +420,7 @@ PMBR present, kernel/efi/data types, `pmOS_*` labels, `-S 1 -T 5 -P 10`).
 
 Intentional deviations, all of them at the line that makes them: the GPT areas are zeroed before
 `parted` (pmbootstrap leaves it to parted; it costs nothing and makes `cgpt create` immune to a stale
-header), `mkfs` does not get `-i 8192` (that is for pmbootstrap's image builds; our images are 4 GiB
+header), `mkfs` does not get `-i 8192` (that is for pmbootstrap's image builds; our images are 6 GiB
 with ~90k files), the fstab pass column is `0 1`/`0 2` instead of `0 0` (systemd-fsck orders them),
 the kernel command line carries `root=UUID=... rootwait rw` instead of pmOS's `pmos_root_uuid=...`
 (Debian resolves its root from `root=`), and `install-emmc.sh` copies `/home` with the rest of the
@@ -485,9 +485,13 @@ it. `JOBS=<n>` overrides the choice, and the `Building kernel <release> (N jobs)
 and `BOOT_FS` (ext2) override its boot partition.
 
 `scripts/make-image.sh` reuses that layout on a loop device, so an image is built exactly like a
-card is written, with one difference: its size is an argument (`IMAGE_SIZE_MIB`, default 4096)
-instead of the device's, and the copy it publishes is sanitized. `scripts/lib-dist.sh` is the only
-place that decides what a published artifact may contain, and `dist_assert_clean` refuses the
+card is written, with one difference: its size is an argument (`IMAGE_SIZE_MIB`, default 6144)
+instead of the device's, and the copy it publishes is sanitized. The size is not cosmetic: p1 and
+p2 come off the top, so p3 is `IMAGE_SIZE_MIB - 640 MiB`, and the Omarchy rootfs is ~4.6 GiB — at
+the old 4096 default the copy died with a bare `rsync: write failed ... No space left on device`
+twenty minutes in, which is why the script now measures the rootfs and refuses an image that cannot
+hold it (with the `IMAGE_SIZE_MIB=` value that would) before it touches anything. `scripts/lib-dist.sh`
+is the only place that decides what a published artifact may contain, and `dist_assert_clean` refuses the
 artifact while anything is left; the release rule is:
 
 - **Never publish an artifact straight out of `$ROOTFS`.** The build rootfs carries the
@@ -527,6 +531,18 @@ Its rootfs inputs are environment variables: `TARGET_HOSTNAME`, `USERNAME`, `USE
 the environment, so it forwards every resolved input explicitly — anything not forwarded is
 silently replaced by its default. A locale that is not an entry of `/etc/locale.gen`, or a
 timezone that is not under `/usr/share/zoneinfo`, is reported and replaced by the default.
+
+**Every script that re-execs itself through `sudo` forwards the resolved build root**
+(`BUILD_ROOT`, `WORK_DIR`, `SRC_DIR`) and its own inputs (`ROOTFS`, `KERNEL_STAGE`, `BOOT_SIZE_MIB`,
+`CONFIRM`, …), not just `build-rootfs.sh`: without that, `BUILD_ROOT=/mnt/emmc/deboma-build` would
+build half of the system at the default `~/.cache/debian-aarch64` and half somewhere else, and
+`CONFIRM`-style guards could never pass. Moving the build root to another disk is therefore
+`BUILD_ROOT=<path> scripts/...` — **do not** point the default path at the disk with a symlink:
+forky's `rsync` 3.5.1 refuses to follow a symlink owned by another user when it runs as root
+(Debian's `syscall_explain_untrusted_symlink_refusal.patch`, which only explains the bare
+`Too many levels of symbolic links` it used to print), so `make-image.sh` and `make-release.sh` die
+on their exclude file — and on the source or destination — if a symlinked build root is owned by the
+invoking user instead of root.
 
 `write-sd.sh` and `install-emmc.sh` are destructive to block devices and refuse to touch the
 internal eMMC from `write-sd.sh` or the running root from either. Both build the same three

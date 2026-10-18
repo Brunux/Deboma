@@ -8,7 +8,13 @@ set -euo pipefail
 [ -n "${1:-}" ] && ROOTFS="$1"
 
 if [ "$(id -u)" -ne 0 ]; then
-	exec sudo -n DEVICE="$DEVICE" "$(readlink -f "$0")" "${1:-}"
+	# Forward every resolved build input: sudo does not preserve the caller's
+	# environment, so a ROOTFS or KERNEL_STAGE override, or a build root outside
+	# $HOME, would otherwise be silently replaced by its default.
+	exec sudo -n \
+		BUILD_ROOT="$BUILD_ROOT" WORK_DIR="$WORK_DIR" SRC_DIR="$SRC_DIR" \
+		DEVICE="$DEVICE" ROOTFS="$ROOTFS" KERNEL_STAGE="$KERNEL_STAGE" \
+		"$(readlink -f "$0")" "${1:-}"
 fi
 
 [ -d "$ROOTFS" ] || die "rootfs not found: $ROOTFS (run build-rootfs.sh first)"
