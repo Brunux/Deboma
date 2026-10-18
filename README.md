@@ -1,25 +1,26 @@
-# Debian aarch64 for Nura-supported devices
+# Debian arm64 for the Google Hayato — the Omarchy desktop
 
 A **device-agnostic** Debian port framework that reuses Nura's (postmarketOS') hardware
-support — kernel, device tree, patches, modules and boot flow — instead of Alpine.
+support — kernel, device tree, patches, modules and boot flow — instead of Alpine. Its
+desktop is **[Omarchy v4](https://omarchy.org)** (Hyprland + the Quickshell shell).
 
 First target: the **Google Hayato** Chromebook (MediaTek MT8192, `google-asurada`).
 
-- **Status:** boots from microSD on the Hayato with the Nura-ported sway session (display,
-  input, storage, Wi-Fi, Bluetooth, audio, suspend, greeter), and the hardware report of the
-  booted image comes back clean (kept in [`reports/`](reports/)). The eMMC install works and is
+- **Goal:** the Omarchy desktop on this Chromebook. `uis/omarchy/` holds the port (the
+  package list, the vendored Omarchy tree, the Debian system overlay and the session), and
+  [`uis/omarchy/README.md`](uis/omarchy/README.md) documents what it ships and how it
+  deviates from upstream.
+- **Status:** boots from microSD on the Hayato into the Omarchy desktop — display, input,
+  storage, Wi-Fi, Bluetooth, audio, suspend and the greeter all work, and the hardware report
+  of the booted image comes back clean (kept in [`reports/`](reports/)). The eMMC install is
   validated on hardware, and the running installation can be backed up and restored
   (`scripts/backup-system.sh`, `scripts/restore-system.sh`).
-- **Release:** [`v0.1.1`](docs/releases/v0.1.1.md) — the precompiled image, with the eMMC install
-  validated on hardware (see [Download and flash](#download-and-flash-a-precompiled-image)).
-- **Plan:** [`docs/plan.md`](docs/plan.md)
+- **Release:** [`v0.1.1`](docs/releases/v0.1.1.md) — the last precompiled image; it shipped
+  the earlier (sway) session, before the Omarchy desktop (see
+  [Download and flash](#download-and-flash-a-precompiled-image)).
+- **Plan:** [`docs/plan-omarchy.md`](docs/plan-omarchy.md)
 - **Recon of the reference machine:** [`docs/recon.md`](docs/recon.md)
 - **Agent/build instructions:** [`AGENTS.md`](AGENTS.md)
-
-![The ported sway session on the Hayato rev1](docs/screenshots/hayato-r1-sway.png)
-
-*The ported session on the Hayato: waybar (battery, temperature, backlight, wireless) over
-Alacritty with the solarized theme.*
 
 > **Note on how this project is developed:** the work is carried out **by an AI agent running on
 > [OpenCode](https://opencode.ai)** together with the maintainer (see
@@ -85,7 +86,7 @@ kernels/<flavor>/          one directory per kernel (shared by devices)
   patches/*.patch          patches
   patches/series           apply order, one filename per line
   APKBUILD.reference       upstream kernel package (reference only)
-uis/<ui>/                  one directory per graphical shell (sway, ...)
+uis/<ui>/                  one directory per graphical shell (Omarchy)
   packages.list            packages to install (Debian names)
   files/                   tree overlaid onto the rootfs (etc/ as root,
                            home/ merged into the user's home)
@@ -109,7 +110,7 @@ scripts/
   restore-system.sh        restore such a backup onto a disk (root only, from the live SD)
   check-system.sh          hardware + configuration report (runs on the booted image)
   build.sh                 the full pipeline (no block devices touched)
-docs/                      plan, recon, release notes, screenshots
+docs/                      plan, recon, release notes
 reports/                   check-system.sh output captured on real hardware
 ```
 
@@ -120,8 +121,8 @@ picked automatically).
 
 The graphical shell is a separate axis: `uis/<name>/` holds its package list and a file tree that
 `build-rootfs.sh` stages and `rootfs-setup.sh` installs. Select it with `UI=<name>` (default
-`sway`). `uis/sway/` ports the maintainer's Nura session — see
-[`uis/sway/README.md`](uis/sway/README.md) for the layout and the deliberate deviations.
+`omarchy`); [`uis/omarchy/README.md`](uis/omarchy/README.md) documents the layout and the
+deliberate deviations from upstream.
 
 ### What comes from Nura and what is Debian
 
@@ -133,7 +134,7 @@ The graphical shell is a separate axis: `uis/<name>/` holds its package list and
 | `boot-deploy` | `scripts/make-kpart.sh` |
 | `depthcharge-tools`, `cgpt` | same tools (Debian/Alpine packages) |
 | `pmbootstrap install --disk` | `scripts/install-emmc.sh` |
-| `postmarketos-ui-sway` + the maintainer's dotfiles | `uis/sway/` |
+| Nura's sway session (`postmarketos-ui-sway` + the maintainer's dotfiles) | `uis/omarchy/` — the Omarchy v4 desktop (Hyprland + Quickshell) |
 
 The boot chain is the *stock* one: depthcharge loads a **signed FIT "kpart"** from the ChromeOS
 kernel partition (`p1`). **The SPI firmware is never flashed.**

@@ -1,7 +1,6 @@
 # Let the `video` group change the LCD backlight so the unprivileged session
 # can run `brightnessctl`, which is what the XF86MonBrightness{Down,Up} bindings
-# (Omarchy's Hyprland bindings here, etc/sway/config.d/20-brightness.conf in the
-# sway UI) call.
+# in Omarchy's Hyprland configuration call.
 #
 # Debian's brightnessctl package ships no udev rule and nothing else in the
 # system touches /sys/class/backlight, so the brightness file stays root-only

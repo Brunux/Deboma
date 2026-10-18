@@ -34,7 +34,7 @@ PACKAGES_DIR="$REPO_DIR/packages"
 #   uis/<name>/files/          tree overlaid onto the rootfs (etc/ as root,
 #                              home/ into /home/$USERNAME)
 UIS_DIR="$REPO_DIR/uis"
-UI="${UI:-sway}"
+UI="${UI:-omarchy}"
 UI_DIR="$UIS_DIR/$UI"
 
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }

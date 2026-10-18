@@ -22,6 +22,10 @@ hyprland-qtutils
 uwsm
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
+# Hyprland enables its built-in Xwayland by default (xwayland:enabled = true),
+# so X11-only programs (emulators, Wine, some Java/Steam games) need the server
+# binary; nothing else pulls it in.
+xwayland
 hyprpicker
 hyprsunset
 

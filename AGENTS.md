@@ -91,13 +91,13 @@ scripts/                   lib.sh (device/kernel/UI resolution), lib-cgpt.sh
                            scripts, including make-image.sh / make-release.sh
 reports/                   check-system.sh output captured on real hardware, kept
                            as evidence for the checks (see reports/README.md)
-docs/                      plan.md, recon.md, releases/<version>.md (release
+docs/                      plan-omarchy.md, recon.md, releases/<version>.md (release
                            notes, reused as the tag message and the GitHub
-                           release body), screenshots/
+                           release body)
 ```
 
 Select a device with `DEVICE=<codename> scripts/...`; with a single device it is picked
-automatically. Select the graphical shell with `UI=<name>` (default `sway`).
+automatically. Select the graphical shell with `UI=<name>` (default `omarchy`).
 
 ### The image carries this repository
 
@@ -221,7 +221,7 @@ uncommitted changes, since those do not travel into the image.
   (`hci0`, bound to `serial0-0` via `hci_uart` in H5 mode, RTL8822CS firmware loaded) is
   never powered up and there is no Bluetooth at all — no scanning, no pairing, and the SPA
   plugins have nothing to talk to, so BT audio silently does not exist. `bluez` is therefore
-  in `uis/sway/packages.list` alongside the SPA plugin. Debian 5.87 has **no `bluez-utils`**
+  in `uis/omarchy/packages.list` alongside the SPA plugin. Debian 5.87 has **no `bluez-utils`**
   (the CLI tools ship in `bluez`; `bluetoothd` is `/usr/libexec/bluetooth/bluetoothd`).
   Verify with `bluetoothctl show` (*Powered: yes*) and `btmgmt info`.
 - **Audio (MT8192)**: the card `mt8192_mt6359_rt1015p_rt5682` is only usable once its UCM
@@ -238,7 +238,7 @@ uncommitted changes, since those do not travel into the image.
   Confirmed on hardware: the speaker plays a video.
   The same class of bug will hit any card whose routing lives in a UCM `BootSequence`.
 - **ALSA-only applications**: Debian's stock alsa-lib configuration has no usable `default`
-  PCM; that device is supplied by **`pipewire-alsa`** (in `uis/sway/packages.list`). Without
+  PCM; that device is supplied by **`pipewire-alsa`** (in `uis/omarchy/packages.list`). Without
   it, `aplay`/`arecord` without an explicit `-D`, emulators and some Java/game audio fail
   with *audio open error: No such file or directory* while PipeWire clients (and therefore
   everything using PulseAudio) work fine, which makes the gap easy to overlook.
@@ -249,24 +249,21 @@ uncommitted changes, since those do not travel into the image.
   device registered`) and its capacity is readable, but it reports `Unknown chemistry: OTC0` and
   the kernel repeatedly logs `power_supply sbs-8-000b: driver failed to report
   'status'/'health'/'time_to_empty_now' property: -5/-6`. This is **upstream, not this port**:
-  Nura's own log carries the same messages (1296 of them). What waybar shows is the capacity,
-  which works, because its `battery` module reads `/sys/class/power_supply` directly
-  (`"bat": "sbs-8-000b"`, see `waybar-battery(5)`) — `upower` is *not* what draws it.
-  `upower` is in `uis/sway/packages.list` anyway: WirePlumber asks it for the battery
-  percentage, and without the daemon every start logs
+  Nura's own log carries the same messages (1296 of them). What the bar shows is the capacity,
+  which works, because it reads `/sys/class/power_supply` directly — `upower` is *not* what
+  draws it. `upower` is in `uis/omarchy/packages.list` anyway: WirePlumber asks it for the
+  battery percentage, and without the daemon every start logs
   `default: Failed to get percentage from UPower: NameHasNoOwner`.
 - **Backlight keys**: `brightnessctl` needs write access to
   `/sys/class/backlight/*/brightness`. Debian's `brightnessctl` ships no udev rule and
   nothing else in the system grants it, so `/sys/class/backlight` stays root-only (0644) and
-  the sway `XF86MonBrightness*` bindings fail with *Permission denied* for the session user.
-  `uis/sway/files/etc/udev/rules.d/90-brightnessctl.rules` (group `video`, `g+w`) fixes it.
+  the `XF86MonBrightness*` bindings fail with *Permission denied* for the session user.
+  `uis/omarchy/files/etc/udev/rules.d/90-brightnessctl.rules` (group `video`, `g+w`) fixes it.
 - **Lock key**: the right-most key of the top row emits `KEY_SLEEP`, and that is precisely the
   key systemd-logind turns into a suspend on its own — its button handling consults no polkit and
   no session, which makes it the only suspend path that always works.
-  `uis/sway/files/etc/keyd/default.conf` therefore leaves the key alone, and
-  `uis/sway/files/etc/sway/config.d/21-lock-screen.conf` binds the keysym the same keycode
-  produces (**`XF86Sleep`**) to `swaylock`: the key locks the screen and logind suspends the
-  machine ~0.3 s later.
+  `uis/omarchy/files/etc/keyd/default.conf` therefore leaves the key alone, so logind
+  suspends the machine ~0.3 s after the key is pressed; locking is the desktop's own binding.
   Nura instead maps `sleep = coffee` — `KEY_COFFEE`, the kernel's lock/screensaver key, whose
   xkb keysym is `XF86ScreenSaver`. Because keyd grabs the keyboard, logind then never sees
   `KEY_SLEEP`, and since nothing consumes `KEY_COFFEE` either, the Lock key there does
@@ -276,23 +273,18 @@ uncommitted changes, since those do not travel into the image.
   (`journalctl` shows `Suspend key pressed short.` in the early boots and not one line of it
   afterwards, while `keyd.rvaiya` logs `DEVICE: match ... (cros_ec)`), so the mapping is left
   out.
-  Confirmed on hardware: the first report from a booted card records `5 suspend/resume cycle(s)`
-  and the Lock key locks the screen and suspends the machine.
-  The session can still suspend by itself — `Alt+Shift+Escape` (lock, then sleep; Nura's
-  shortcut) and `Alt+Ctrl+Escape` (sleep without locking) run `~/.config/bin/sway-suspend` —
-  but that goes through `loginctl suspend`, a D-Bus method guarded by polkitd (stock
-  `org.freedesktop.login1.suspend` has `allow_active=yes`), which fails with *Access denied*
-  and no output from a session logind does not consider active. The helper therefore walks a
-  fallback chain (`sudo -n loginctl suspend`, then `echo mem > /sys/power/state`) and logs
-  every attempt to `~/.cache/sway-suspend.log`. Suspending through logind needs the daemon
-  (D-Bus activated; Debian keeps `systemd-logind` inside the `systemd` package).
+  Confirmed on hardware: the first report from a booted card records `5 suspend/resume cycle(s)`.
+  Suspending from a session helper goes through `loginctl suspend`, a D-Bus method guarded by
+  polkitd (stock `org.freedesktop.login1.suspend` has `allow_active=yes`), which fails with
+  *Access denied* from a session logind does not consider active; that needs the daemon (D-Bus
+  activated; Debian keeps `systemd-logind` inside the `systemd` package).
   Reading a keymap dump is misleading here: `xkbcli compile-keymap` prints **X** keycodes,
   which are evdev + 8, so `KEY_SLEEP` (evdev 142) shows up as keycode 150 and
   `KEY_BRIGHTNESSDOWN` (evdev 224) as keycode 232.
 
-- **`uis/sway/`** ports the maintainer's Nura session (solarized theme, Alt as `$mod`, Search
-  key opens bemenu, waybar, Alacritty). `rootfs-setup.sh` rewrites `/home/brunux` inside the
-  shipped text files to `$USERNAME`, and merges `uis/sway/files/home/` into that home.
+- **`uis/omarchy/`** is the desktop (Omarchy v4: Hyprland + Quickshell). `rootfs-setup.sh`
+  rewrites `/home/brunux` inside the shipped text files to `$USERNAME`, and merges
+  `uis/omarchy/files/home/` into that home; `uis/omarchy/README.md` is the reference.
 - **tuigreet**: Debian ships the *original* tuigreet **0.9.1**, which has no `--config`/TOML
   support and no background animations (Nura runs the fork, which has both). The greeter's
   personalisation is therefore expressed as flags in `/etc/greetd/config.toml`; the `matrix`
@@ -302,9 +294,10 @@ uncommitted changes, since those do not travel into the image.
 - **The Chromebook keyboard has no F1-F10**, and that is what breaks virtual terminals:
   `mt8192-asurada-hayato-r1.dts` maps the top row to action keys (`KEY_BACK`, `KEY_FORWARD`,
   `KEY_REFRESH`, `KEY_FULL_SCREEN`, `KEY_SCALE`, brightness, mute, volume). Switching VTs needs a
-  real F-key keycode: the kernel maps `Ctrl+Alt+F<n>` to `Console_<n>`, and sway reacts to the
-  `XF86Switch_VT_<n>` keysym that the same keycode produces (`srvr_ctrl(fkey2vt)` is part of the
-  default xkb keymap). `uis/sway/files/etc/keyd/default.conf` (package `keyd`) supplies them:
+  real F-key keycode: the kernel maps `Ctrl+Alt+F<n>` to `Console_<n>`, and the compositor
+  reacts to the `XF86Switch_VT_<n>` keysym that the same keycode produces (`srvr_ctrl(fkey2vt)`
+  is part of the default xkb keymap). `uis/omarchy/files/etc/keyd/default.conf` (package `keyd`)
+  supplies them:
   `Ctrl+Alt`+top row = VT 1-10, `Search`+top row = F1-F10. Debian names the binary
   **`/usr/bin/keyd.rvaiya`** (the package enables `keyd.service`, and `/etc/keyd/` ships empty).
   keyd reads its config **only at startup** — `keyd.rvaiya reload` after editing — and
@@ -317,38 +310,31 @@ uncommitted changes, since those do not travel into the image.
   exclusions must precede `k:0000:0000`, because keyd returns on the first matching entry, and
   they are hashes of the device name, its key count and the abs/rel masks (`keyd.rvaiya monitor`
   prints them, and `journalctl -u keyd` logs what got matched).
-- **Nerd Fonts / waybar icons**: Debian has no Nerd-patched Adwaita Mono, so the theme uses
-  `JetBrains Mono` for the text. Beware `fonts-nerd-symbols`: it is **DFSG-stripped** and only
-  ships Octicons, Codicons, Devicons, Seti and Powerline. It has **no Font Awesome
-  (U+F000-U+F2FF) and no Material Design Icons (plane 15)** — which is exactly what the theme's
-  icons are — so on its own every icon renders as a *tofu* box with the hex codepoint inside.
-  `fonts-font-awesome-legacy` and `fonts-materialdesignicons-legacy` supply those two sets and
-  fontconfig's fallback then resolves every glyph, with no change to the configuration.
-  Verify with the engine waybar actually uses:
-  `pango-view --no-display --font="JetBrains Mono 13" --output=/tmp/i.png <text>` (package
-  `pango1.0-tools`) and look at the PNG.
+- **Nerd Fonts**: Debian has no Nerd-patched JetBrains Mono, and the desktop asks for the
+  family **`JetBrainsMono Nerd Font`** — which, unresolved, makes fontconfig fall back to a
+  proportional face (Noto Sans) and renders the terminals and the bar in the wrong font.
+  `uis/omarchy` ships `files/etc/fonts/conf.d/50-omarchy-debian-fonts.conf`, which aliases that
+  family to `JetBrains Mono` and keeps the icon fonts in the fallback chain. Beware
+  `fonts-nerd-symbols`: it is **DFSG-stripped** and only ships Octicons, Codicons, Devicons,
+  Seti and Powerline. It has **no Font Awesome (U+F000-U+F2FF) and no Material Design Icons
+  (plane 15)** — which is exactly what the theme's icons are — so on its own every icon renders
+  as a *tofu* box with the hex codepoint inside. `fonts-font-awesome-legacy` and
+  `fonts-materialdesignicons-legacy` supply those two sets and fontconfig's fallback then
+  resolves every glyph, with no change to the configuration. Verify where the family resolves
+  with `fc-match "JetBrainsMono Nerd Font"` (it must report `JetBrains Mono`), and render a
+  glyph with `pango-view --no-display --font="JetBrains Mono 13" --output=/tmp/i.png <text>`
+  (package `pango1.0-tools`).
 - **Wi-Fi profiles**: Nura and Debian name the wireless interface differently (Nura: `wlan0`,
   Debian/systemd: `wlp1s0`), so a NetworkManager profile copied verbatim is never activated.
   `scripts/wifi.sh import` drops `interface-name=` to bind the profile to any Wi-Fi device. The
   profiles hold the PSK in clear, so they live in `$WIFI_DIR` (`$BUILD_ROOT/wifi`) and are
   git-ignored; `build-rootfs.sh` imports them automatically when that directory exists.
-- **sway `-C` validates headlessly** even inside a chroot (useful before booting):
-  `WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 sway -C -c /etc/sway/config`.
-- **Xwayland**: sway starts it on its own (it is not in the sway configuration, so the "every
-  command the configuration invokes is installed" check does not see it). Without the `xwayland`
-  package each session logs exactly two red lines —
-  `[wlr] cannot find xwayland binary "/usr/bin/Xwayland"` and
-  `[sway] Failed to start Xwayland` — and X11-only programs (emulators, Wine, some Java/Steam
-  games) cannot run at all, while everything Wayland-native works. Nura ships Xwayland, so
-  `xwayland` is in `uis/sway/packages.list` (25 extra packages: the X libraries);
-  `check-system.sh` warns when it is missing, unless the session deliberately disables it with
-  `xwayland disable`.
-- **workstyle** (renames workspaces to icons) is not packaged in Debian; Nura ran a cargo build
-  linked against musl, which cannot run against glibc. Its drop-in is not shipped, but
-  `~/.config/workstyle/config.toml` is kept so `cargo install workstyle` is enough to enable it.
-- `bemenu` in Debian pulls one backend through an alternative dependency; add
-  **`libbemenu-wayland`** explicitly for the Wayland session. `grimshot` is a package of its own.
-  `pactl` (the XF86Audio* keys) comes from `pulseaudio-utils`, not from `pipewire-pulse`.
+- **Xwayland**: Hyprland enables its built-in Xwayland by default (`xwayland:enabled = true`),
+  so the `xwayland` package (which pulls the 25 X libraries) has to be installed or X11-only
+  programs (emulators, Wine, some Java/Steam games) cannot run while everything Wayland-native
+  works. It is in `uis/omarchy/packages.list`; `check-system.sh` warns when `/usr/bin/Xwayland`
+  is missing.
+- `pactl` (the XF86Audio* keys) comes from `pulseaudio-utils`, not from `pipewire-pulse`.
 
 ### ChromeOS GPT (`cgpt`)
 

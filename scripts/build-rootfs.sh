@@ -6,7 +6,7 @@
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
-UI="${UI:-sway}"
+UI="${UI:-omarchy}"
 [ -d "$UI_DIR" ] || die "unknown UI '$UI' (see $UIS_DIR)"
 TARGET_HOSTNAME="${TARGET_HOSTNAME:-$(echo "$DEVICE" | sed 's/.*-//')}"
 USERNAME="${USERNAME:-brunux}"

@@ -58,7 +58,7 @@ Lua configuration is the one to use — do not port Omarchy v3's `hyprland.conf`
 | Scope | **desktop shell only**: Hyprland + Quickshell + `config/`, `themes/`, `applications/`, `etc/` + the core `omarchy-*` CLI. Arch-only pieces are substituted or dropped; `omarchy-pkgs` apps are deferred. |
 | Upstream pin | `quattro` @ `da2db1a2` (4.0.0.alpha) |
 | Themes | **curated subset**: all theme definitions, only the default theme's (**Tokyo Night**) backgrounds, English-only shell translations. The other ~160 MB of backgrounds are fetched from the pinned commit only if wanted (`uis/omarchy/PROVENANCE.md`). |
-| Where it plugs in | the existing device-agnostic **`uis/<ui>/`** axis: add `uis/omarchy/`, selected with `UI=omarchy` (`uis/sway/` stays as the other choice) |
+| Where it plugs in | the existing device-agnostic **`uis/<ui>/`** axis: `uis/omarchy/`, selected with `UI=omarchy` (the only UI shipped; the sway session was dropped once this one booted) |
 | Plan location | this file |
 
 The UI axis already does what is needed: `scripts/lib.sh` resolves `UI`, and
@@ -196,16 +196,16 @@ the shell draws the bar on a real session; `qs -c <config>` reports no fatal QML
 unhandled import.
 
 **F5 — Hayato quirks.**
-The device-specific half, mirroring what `uis/sway/files/` already solved: `keyd` exclusions for
+The device-specific half, covering what the earlier sway session had solved: `keyd` exclusions for
 `cros_ec_buttons`/jack and the `KEY_SLEEP` lock/suspend behaviour, the missing F-row and the
 `Ctrl+Alt`/`Search` VT bindings, the ALSA UCM boot sequence, the backlight udev rule, 4 GB RAM
 tuning (zram, animation/idle defaults), Wi-Fi regulatory DB. *Verify:* the same checks
-`check-system.sh` already encodes for the sway UI, re-pointed at Omarchy.
+`check-system.sh` already encodes, re-pointed at Omarchy.
 
 **F6 — Build and validate off-device.**
 `UI=omarchy scripts/build-rootfs.sh`, then a card via `write-sd.sh`. Headless checks before boot:
-`sway -C` is meaningless here, so validate Hyprland's config with its own tooling
-(`hyprctl`/`Hyprland` config errors), `Quickshell` offline where possible, and every config file
+Validate Hyprland's config with its own tooling (`hyprctl`/`Hyprland` config
+errors), `Quickshell` offline where possible, and every config file
 for the tools shipped. *Verify:* the rootfs contains the overlay, the package list is installed,
 the staged revision is the branch's commit.
 
@@ -230,8 +230,6 @@ proven. Not part of this milestone.
 - **Volume of Arch-only tooling.** Of 532 `omarchy-*` commands, the desktop needs a subset; the
   rest are Arch-installer/AUR/update paths. The port's job is a clean subset, not a rewrite — but
   the subset boundary must be explicit and tested (F2).
-- **Two UIs to maintain.** `uis/sway` and `uis/omarchy` share the same device quirks. Keep the
-  device-level files single-sourced where possible (lib/overlay) rather than copied twice.
 - **Upstream is `4.0.0.alpha`.** Expect the pinned tree to move under us; the pin and the patch
   series are what make the port reproducible.
 
@@ -241,5 +239,5 @@ proven. Not part of this milestone.
   broken call).
 - Whether `greetd` + `tuigreet` is enough to pick the Hyprland/UWSM session, or a small
   `greetd`/session tweak is needed.
-- Whether `uis/omarchy` reuses `uis/sway`'s device files or gets its own copies.
+- `uis/omarchy` carries its own copies of the device files (the sway session's went with it).
 - The first release number for a released Omarchy UI (likely `v0.2.0`, decided at F7).

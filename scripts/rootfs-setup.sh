@@ -9,7 +9,7 @@ export DEBIAN_FRONTEND=noninteractive
 : "${DEBIAN_SUITE:=forky}"
 : "${DEBIAN_MIRROR:=http://deb.debian.org/debian}"
 : "${DEBIAN_COMPONENTS:=main contrib non-free non-free-firmware}"
-: "${UI:=sway}"
+: "${UI:=omarchy}"
 : "${REPO_NAME:=debian-aarch64}"
 PKGDIR="/tmp/packages"
 
@@ -131,7 +131,6 @@ EOF
 # unconfigured.
 GREETD_CMD=
 case "$UI" in
-	sway) GREETD_CMD=sway ;;
 	# The Omarchy/Hyprland session entry (uis/omarchy/files): UWSM starts
 	# Hyprland as a systemd user session. Shipped as a wrapper because greetd
 	# splits the command into argv and the session needs several arguments.

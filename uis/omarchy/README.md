@@ -12,7 +12,7 @@ uis/<ui>/
 
 `scripts/build-rootfs.sh` stages both into the chroot and `scripts/rootfs-setup.sh`
 installs them, rewriting `/home/brunux` to the configured `USERNAME` inside the
-text files. Select this UI with `UI=omarchy`; `uis/sway` remains the other one.
+text files. Select this UI with `UI=omarchy`.
 
 This desktop is a port of **[Omarchy v4](https://omarchy.org)** — Hyprland, the
 Quickshell shell, the `omarchy-*` tooling and themes — onto this repository's
@@ -66,8 +66,7 @@ The chain on this port is: `greetd` → `tuigreet` (which lists
 `/usr/share/wayland-sessions/omarchy.desktop`) → `/usr/local/bin/omarchy-session`
 → `uwsm start -g -1 -e -D Hyprland hyprland.desktop` → Hyprland.
 `scripts/rootfs-setup.sh` became UI-aware and writes `--cmd omarchy-session` into
-`/etc/greetd/config.toml` (`--cmd sway` for the sway UI), enabling `greetd` for
-either UI.
+`/etc/greetd/config.toml`, enabling `greetd` for the desktop.
 
 Upstream ships the `omarchy-*` commands as `/usr/bin/omarchy-*` (they come in the
 Arch `omarchy` package). Here `setup.sh` symlinks them from the vendored
@@ -88,7 +87,7 @@ on PATH.
 
 ### Device quirks and system files
 
-The Hayato quirks the sway UI already solved are reused here:
+The Hayato device quirks are handled here:
 
 - `files/etc/keyd/default.conf` — the Chromebook top-row remap (VTs, F1–F10); the
   Lock key stays unmapped so systemd-logind still suspends on `KEY_SLEEP`.
@@ -103,7 +102,7 @@ libxkbcommon reads before the system rules, so `files/etc/xkb/rules/evdev` and
 `files/etc/xkb/symbols/omarchy` are installed, alongside upstream's logind,
 systemd (`nofile`, shutdown), `systemd-oomd`, `sysctl.d`, `plocate` and `zswap`
 drop-ins. The ALSA UCM boot sequence comes from `alsa-utils` (base) and
-`alsa-ucm-conf` (this list), as in the sway UI. `pamixer` drives the XF86Audio*
+`alsa-ucm-conf` (this list). `pamixer` drives the XF86Audio*
 bindings, but the shipped `omarchy-capture-screenrecording` and
 `omarchy-audio-input-set-default` call `pactl`, so `pulseaudio-utils` is in the
 list as well (otherwise screen recording loses its audio and `check-system.sh`
@@ -149,6 +148,7 @@ network, power, session, lock); the rest is omitted rather than stubbed, and
 | `hyprland-guiutils` | `hyprland-qtutils` | Debian's name for the Qt GUI helpers and share picker. |
 | `quickshell` | `quickshell` | Present (0.3.2); the pinned shell must run against it, or be trimmed (F4). |
 | `hyprland-preview-share-picker` | `hyprland-qtutils` | Ships inside the Qt utils package. |
+| `xorg-xwayland` | `xwayland` | Debian's name. Hyprland enables its built-in Xwayland by default (`xwayland:enabled = true`), so X11-only programs (emulators, Wine, some Java/Steam games) need the server binary; nothing else pulls it in. |
 | `python-gobject` | `python3-gi` | Debian's name. |
 | `nss-mdns` | `libnss-mdns` | Debian's name. |
 | `tldr` | `tealdeer` | Debian's tldr client. |
@@ -160,7 +160,7 @@ network, power, session, lock); the rest is omitted rather than stubbed, and
 | `zram-generator` | `systemd-zram-generator` | The aarch64 addition; `zram-tools` is already in `packages/base.list`. |
 | `qemu-user-static-binfmt` | `qemu-user-binfmt` | Debian's name. |
 | `woff2-font-awesome` | `fonts-font-awesome` | Debian's name. |
-| `ttf-jetbrains-mono-nerd-basic` | `fonts-jetbrains-mono` + `fonts-nerd-symbols` + `fonts-font-awesome` + `fonts-materialdesignicons-legacy` | Debian ships no Nerd-patched Mono face, and `fonts-nerd-symbols` is DFSG-stripped of Font Awesome and Material Design Icons — the same fix `uis/sway` uses. |
+| `ttf-jetbrains-mono-nerd-basic` | `fonts-jetbrains-mono` + `fonts-nerd-symbols` + `fonts-font-awesome` + `fonts-materialdesignicons-legacy` | Debian ships no Nerd-patched Mono face, and `fonts-nerd-symbols` is DFSG-stripped of Font Awesome and Material Design Icons — the same fix this port applies. |
 | `ttf-ia-writer` | (dropped) | Not packaged; only vendor it if a theme link needs it. |
 | `libvips`, `mariadb-libs`, `postgresql-libs` | `libvips42t64`, `libmariadb3`, `libpq5` | Debian's names. |
 
@@ -181,7 +181,7 @@ silently forgotten.
 
 ## Installed package list
 
-`packages.list` holds 128 Debian names, every one verified to resolve on
+`packages.list` holds 135 Debian names, every one verified to resolve on
 `forky`/`arm64`. It does not repeat what `packages/base.list` already provides
 (`network-manager`, `wireless-regdb`, `alsa-utils`, `rtkit`, `dosfstools`,
 `bash-completion`, `less`). The compositor, Quickshell and its Qt6/QML runtime,
@@ -193,7 +193,7 @@ and key bindings invoke are all listed there with a comment saying why.
 | Phase (`docs/plan-omarchy.md`) | State |
 |---|---|
 | F0 recon + pin | done — this README and the plan record it |
-| F1 `packages.list` | done — 134 names, all resolved on forky/arm64 |
+| F1 `packages.list` | done — 135 names, all resolved on forky/arm64 |
 | F2a vendor the pinned tree (`files/usr/share/omarchy/`, curated) | done — 24 MB, see `PROVENANCE.md` |
 | F2b seed `~/.config` + link the `bin/` subset (`setup.sh`) | done — Arch-only commands excluded, rest linked |
 | F3 session/login (Hyprland via UWSM under greetd) | done — greetd starts the Omarchy session; the first boot landed on the Hyprland desktop |

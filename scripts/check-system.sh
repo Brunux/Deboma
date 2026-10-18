@@ -81,7 +81,7 @@ if [ "$(id -u)" -eq 0 ]; then
 			env XDG_RUNTIME_DIR="/run/user/$(id -u "$_user")" \
 			"$(readlink -f "$0")" "$@"
 	fi
-	warn "running as root: the session checks (audio, PipeWire, sway) will not work"
+	warn "running as root: the session checks (audio, PipeWire, the desktop) will not work"
 fi
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -117,19 +117,15 @@ if [ -z "$REPO" ] || [ ! -d "$REPO/packages" ] || [ ! -d "$REPO/uis" ]; then
 fi
 
 # Which UI this system was built with. build-rootfs.sh records it in
-# /etc/debian-aarch64-revision, and the UI-specific checks key on it: running the
-# sway checks (or validating uis/sway/packages.list) on an Omarchy image reports
-# the *other* UI's packages as missing, which is noise, not a regression.
+# /etc/debian-aarch64-revision; the UI-specific checks below key on it, so a
+# checkout validated against the wrong UI reports the other UI's packages as
+# missing, which is noise, not a regression. Omarchy is the only UI shipped.
 _UI="$(sed -n 's/^ui //p' /etc/debian-aarch64-revision 2>/dev/null)"
 if [ -z "$_UI" ]; then
-	if have Hyprland; then
-		_UI=omarchy
-	elif have sway; then
-		_UI=sway
-	fi
+	have Hyprland && _UI=omarchy
 fi
 
-# sway -C needs a runtime dir; keep one for the whole run.
+# The headless session checks need a runtime dir; keep one for the whole run.
 RUNTIME="$(mktemp -d)"
 trap 'rm -rf "$RUNTIME"' EXIT
 
@@ -340,7 +336,7 @@ fi
 
 # The XF86MonBrightness* bindings run brightnessctl as the session user, which
 # needs write access to /sys/class/backlight/*/brightness; Debian grants none,
-# so uis/sway/files/etc/udev/rules.d/90-brightnessctl.rules does.
+# so uis/omarchy/files/etc/udev/rules.d/90-brightnessctl.rules does.
 _bl=""
 for _b in /sys/class/backlight/*/brightness; do
 	[ -e "$_b" ] || continue
@@ -515,10 +511,6 @@ grep -qw mem /sys/power/state 2>/dev/null && ok "/sys/power/state advertises sus
 	fail "no 'mem' in /sys/power/state: the kernel cannot suspend"
 check_svc systemd-logind "systemd-logind is active (its button handling is the polkit-free suspend path)"
 check_svc polkit "polkitd is active (session suspend via loginctl)"
-if [ "$_UI" = sway ]; then
-	[ -x "$HOME/.config/bin/sway-suspend" ] && ok "sway-suspend helper is executable" ||
-		warn "~/.config/bin/sway-suspend is missing or not executable"
-fi
 _susp="$(asroot journalctl -b --no-pager | grep -c 'PM: suspend entry')"
 [ "${_susp:-0}" -ge 1 ] && ok "$_susp suspend/resume cycle(s) recorded in this boot" ||
 	warn "no suspend recorded in this boot: press the Lock key to test it"
@@ -552,36 +544,16 @@ else
 	fail "/etc/greetd/config.toml is missing"
 fi
 have tuigreet && ok "tuigreet is installed" || warn "tuigreet is not installed"
-if [ "$_UI" = sway ] && have sway; then
-	if XDG_RUNTIME_DIR="$RUNTIME" WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 \
-		sway -C -c /etc/sway/config >/dev/null 2>&1; then
-		ok "sway configuration is valid"
-	else
-		fail "sway -C rejected /etc/sway/config"
-	fi
-	# sway starts Xwayland itself (it is not in the configuration), so a missing
-	# package shows up only as two red lines in the journal and as X11 programs
-	# that cannot launch (see AGENTS.md).
-	if grep -rqsE '^[[:space:]]*xwayland[[:space:]]+disable' /etc/sway/config /etc/sway/config.d 2>/dev/null; then
-		skip "Xwayland disabled in the sway configuration"
-	elif [ -x /usr/bin/Xwayland ]; then
+# Hyprland enables Xwayland by default (xwayland:enabled = true), so a missing
+# server binary stays silent until an X11-only program fails to launch.
+if [ "$_UI" = omarchy ]; then
+	if [ -x /usr/bin/Xwayland ]; then
 		ok "Xwayland present (X11 programs can run)"
 	else
-		warn "Xwayland is missing: sway logs a startup error and X11 programs cannot run"
+		warn "Xwayland is missing (package xwayland): X11-only programs cannot run"
 	fi
 fi
 case "$_UI" in
-sway)
-	_missing_cmds=""
-	for _c in waybar alacritty bemenu swaylock swaynag swaybg brightnessctl grimshot wlsunset wpctl pactl; do
-		have "$_c" || _missing_cmds="$_missing_cmds $_c"
-	done
-	if [ -z "$_missing_cmds" ]; then
-		ok "every command the sway configuration invokes is installed"
-	else
-		warn "commands referenced by the sway configuration are missing:$_missing_cmds"
-	fi
-	;;
 omarchy)
 	_missing_cmds=""
 	# gtk-launch is how the shell starts a .desktop entry (libgtk-3-bin); without
