@@ -154,7 +154,7 @@ cat >"$DEST/README.md" <<EOF
 # Backup of \`$HOST\`
 
 Taken from the running system on $(date -Is) with \`scripts/backup-system.sh\` from
-<https://github.com/Brunux/Nureb>.
+<https://github.com/Brunux/Deboma>.
 
 | file | what it is |
 |---|---|

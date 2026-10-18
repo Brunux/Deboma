@@ -10,7 +10,7 @@
 # scripts/write-sd.sh (both come from scripts/lib-cgpt.sh), so flashing it is
 # plain dd:
 #
-#   xz -dc nureb-<device>.img.xz | sudo dd of=/dev/mmcblk1 bs=4M conv=fsync
+#   xz -dc <device>.img.xz | sudo dd of=/dev/mmcblk1 bs=4M conv=fsync
 #
 # and the card boots from the firmware's external-disk entry. Two things differ
 # from write-sd.sh, and both are about the file being *published*:
