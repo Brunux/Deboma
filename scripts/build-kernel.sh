@@ -7,7 +7,20 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 STAGE="$KERNEL_STAGE"
-JOBS="${JOBS:-$(nproc)}"
+# Jobs for make. The core count alone is not a safe default: this machine is an
+# 8-core SoC with 4 GiB of RAM, and a -j8 clang build next to the running desktop
+# swaps until the OOM killer takes a compiler and the whole build with it. Cap the
+# default by what the kernel believes it can hand out, keeping a reserve for the
+# desktop: a quiet machine gets every core, a loaded one gets fewer. JOBS=<n>
+# still overrides, and the log line below records what was used.
+if [ -z "${JOBS:-}" ]; then
+	mem_avail_mib=$(awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo)
+	reserve_mib=768  # left to the desktop, the shell and the linkers
+	per_job_mib=192  # typical clang peak on this kernel tree
+	JOBS=$(((mem_avail_mib - reserve_mib) / per_job_mib))
+	if [ "$JOBS" -lt 2 ]; then JOBS=2; fi
+	if [ "$JOBS" -gt "$(nproc)" ]; then JOBS=$(nproc); fi
+fi
 SERIES="$KERNEL_PATCH_DIR/series"
 
 fetch_and_prepare() {

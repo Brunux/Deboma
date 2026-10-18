@@ -473,6 +473,13 @@ scripts/check-system.sh     # (on the booted image) hardware + configuration rep
 scripts/build.sh            # full pipeline (kernel + rootfs + kernel + kpart)
 ```
 
+`scripts/build-kernel.sh` chooses its own `make -j` count rather than using bare `nproc`: this
+machine has **8 cores and 4 GiB of RAM**, so the default is capped by what the kernel believes it
+can hand out (`MemAvailable` minus a 768 MiB reserve for the desktop, divided by 192 MiB per clang
+job, floor 2, ceiling `nproc`). A quiet machine gets all 8 cores; the same build next to a loaded
+desktop gets 3 or 4 instead of swapping until the OOM killer takes a compiler and the build with
+it. `JOBS=<n>` overrides the choice, and the `Building kernel <release> (N jobs)` line records it.
+
 `scripts/lib-cgpt.sh` holds the one copy of the ChromeOS GPT layout, used by `write-sd.sh`,
 `install-emmc.sh`, `install-kpart.sh`, `make-image.sh` and `make-release.sh`; `BOOT_SIZE_MIB` (512)
 and `BOOT_FS` (ext2) override its boot partition.
