@@ -140,6 +140,25 @@ is the part the desktop itself reaches (theme switching, OSD, capture, audio,
 network, power, session, lock); the rest is omitted rather than stubbed, and
 `docs/plan-omarchy.md` F2 pins that boundary down.
 
+The **command menu** is part of that Arch surface. The vendored
+`default/omarchy/omarchy-menu.jsonc` fills its `Install` and `Remove` rows, and
+several `Update`/`Setup` rows, with the very commands above, so a click opened a
+floating terminal that died on `command not found`. `setup.sh` hides exactly
+those rows through the shell's own extension point,
+`~/.config/omarchy/extensions/omarchy-menu.jsonc` (`Menu.qml` merges it over the
+vendored menu, and a submenu left with no visible row disappears with it), and
+carries upstream's "how to extend the menu" comments over instead of replacing
+them. The list is **generated from the pinned menu on every build**, by matching
+each row's `action` against the same `EXCLUDE` globs that decide the PATH, so a
+new upstream row that reaches for an Arch-only command is caught without editing
+the vendored file. What survives is what works here — `Install > Style >
+Theme`/`Background` and the `Update` menu's Channel/Config/Process/Hardware/
+Password/Timezone rows. Verified live on the booted card by summoning the
+submenu (`omarchy-shell shell toggle omarchy.menu '{"menu":"install"}'`) and
+screenshotting it: `Install` went from thirteen rows to one, `Update` kept all
+six, `Install > Style` kept `Theme` and `Background` (its Arch-only `Fonts` row
+is gone).
+
 ### Package substitutions
 
 | Omarchy (Arch) | Debian (forky) | Why |
@@ -200,7 +219,7 @@ and key bindings invoke are all listed there with a comment saying why.
 | F4 Quickshell shell | imports resolve against Debian's quickshell 0.3.2; the shell runs (bar, launcher, OSD); `Owe.LockFeed` deferred. The desktop audit below fixed the launcher (`gtk-launch`) and the font fallback |
 | F5 Hayato quirks (keyd, ALSA UCM, backlight, RAM) | device files + the system subset installed; every Hayato check passes on the first boot |
 | F6 build + off-device validation | done — `UI=omarchy` rootfs builds; see the validation notes below |
-| F7 hardware validation + release | **first boot 2026-10-18** + desktop audit — see *First boot* and *Desktop audit* below; clean rebuild + re-report pending |
+| F7 hardware validation + release | **first boot 2026-10-18** + desktop audit — see *First boot* and *Desktop audit* below; the menu trimming and `xwayland` are the last two fixes, and the clean rebuild + re-report are what close it |
 
 The card boots (F7): `reports/2026-10-18-omarchy-desktop.txt` is the first boot of
 this UI, on a card written from `commit 85d32fc` (the card's `REVISION` and
@@ -240,6 +259,8 @@ was missing several binaries and install steps the desktop assumes.
 | The weather widget logged "binary could not be found" | `curl` in the base system | Added `curl` to `packages.list`. |
 | The dock pinned `omacalc`/`omawrite` (nothing) | n/a — the pins assume `omarchy-pkgs` | `setup.sh` prunes a default dock pin with no `.desktop` anywhere. |
 | Omarchy's own apps (X, YouTube, the Google web apps, Discord, Zoom, …) were invisible to the launcher | the packaging step installs `applications/*.desktop` → `/usr/share/applications` and `applications/icons/*` → the icon theme | `setup.sh` installs both, normalising the icon names (`Google Maps.png` → `google-maps.png`, which is what `Icon=` asks for) and refreshing the caches. |
+| X11-only programs (emulators, Wine, some Java/Steam games) had no server | `xorg-xwayland`, pulled by the `hyprland` package | Hyprland enables its built-in Xwayland by default, but Debian's `hyprland` does not depend on the server binary. `xwayland` added to `packages.list`; `check-system.sh` warns when `/usr/bin/Xwayland` is missing. |
+| Choosing a menu installer row opened a terminal that died on `command not found` | the Arch-only commands the row calls were shipped | `setup.sh` generates `~/.config/omarchy/extensions/omarchy-menu.jsonc` hiding every row whose `action` calls an excluded command (see *Package-manager and installer tooling*). |
 
 **Deliberately NOT installed:** upstream's
 `default/fontconfig/conf.avail/50-omarchy.conf`. It assumes the Nerd Font family
@@ -247,7 +268,9 @@ exists and, on Debian, its generic-family rules collapse `sans-serif` into the
 monospace face and pull `serif` toward Noto Naskh Arabic. The port's own alias
 covers the one family the desktop actually names, and leaves the generic families
 to Debian. `check-system.sh` now checks where `JetBrainsMono Nerd Font` resolves,
-that the application entries are installed, and that `gtk-launch`/`curl` exist.
+that the application entries are installed, that the theme templates keep their
+line breaks, and that `gtk-launch`/`curl` exist, and warns when `/usr/bin/Xwayland`
+is missing.
 
 **Found, left as-is (with the reason):**
 
@@ -258,10 +281,10 @@ that the application entries are installed, and that `gtk-launch`/`curl` exist.
   GTK/GNOME end state is nevertheless correct — `omarchy-theme-set` runs
   `omarchy-theme-set-gnome`, and `Adwaita-dark` with `Yaru-magenta` is exactly
   Tokyo Night's intent.
-- The shell's menu still lists the deferred installers (`omarchy-install-*`,
-  `omarchy-pkg-*`, the AI/gaming/webapp families). Their commands are not shipped,
-  so choosing one errors: that is the F2 boundary, and trimming or gating the menu
-  belongs with the applications in F8.
+- The shell's menu no longer lists the deferred installers: `setup.sh` hides
+  the rows whose action calls an Arch-only command (see *Package-manager and
+  installer tooling*), so the boundary F2 draws is visible in the menu instead
+  of failing when clicked.
 - `Owe.LockFeed` is deferred with `omarchy-pkgs`; the lock screen falls back.
 - `Unrecognized pragma "OmarchyLoadPatch"`: the shell uses a custom pragma from
   Omarchy's patched Quickshell, which Debian's stock **0.3.2** does not know, so
@@ -272,7 +295,12 @@ that the application entries are installed, and that `gtk-launch`/`curl` exist.
   associated" line) are upstream and cosmetic.
 
 After these fixes the card reports **59 OK, 2 WARN, 0 FAIL** (the WARNs are the
-`sbs-8-000b` fuel-gauge noise and no suspend yet recorded).
+`sbs-8-000b` fuel-gauge noise and no suspend recorded yet). The updated report,
+run again on the same card with the checks added here, says **58 OK, 3 WARN,
+1 FAIL**: the extra WARN and the FAIL are the new Xwayland probe, and the card
+predates `xwayland` in `packages.list`, so a clean `UI=omarchy` rebuild installs
+it and closes both. That rebuild, its fresh report and the release are the F7
+close-out.
 
 ### What was actually validated off-device
 
