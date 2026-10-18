@@ -1,0 +1,96 @@
+# Sway desktop, ported from the maintainer's Nura (postmarketOS) session.
+# One package per line; blank lines and lines starting with # are ignored.
+# Files shipped alongside this list live in uis/sway/files/.
+#
+# Deliberately NOT here:
+#   * workstyle - not packaged in Debian (see uis/sway/README.md).
+
+# compositor + session tools
+sway
+# sway starts Xwayland by default. Without the package every session logs two
+# red lines ("cannot find xwayland binary", "Failed to start Xwayland") and
+# X11-only programs (emulators, Wine, some Java/Steam games) cannot run at all;
+# Nura ships Xwayland. `xwayland disable` in the sway configuration is the
+# alternative, and then this package is not needed.
+xwayland
+swaybg
+swayidle
+swaylock
+wl-clipboard
+
+# what /etc/sway/config and the drop-ins actually invoke
+waybar
+bemenu
+libbemenu-wayland
+alacritty
+grimshot
+grim
+slurp
+wlsunset
+brightnessctl
+# pactl(1) for the XF86Audio* keys; pipewire-pulse provides the server only.
+pulseaudio-utils
+
+# login manager
+greetd
+tuigreet
+
+# Keyboard remapper. The Chromebook's top row is mapped to action keys by the
+# device tree and never emits F1-F10, which leaves no way to switch virtual
+# terminals; see uis/sway/files/etc/keyd/default.conf and the README.
+keyd
+
+# audio
+pipewire
+pipewire-pulse
+# pipewire-alsa routes the ALSA `default` PCM through PipeWire. Without it the
+# stock alsa-lib configuration has no usable `default`, so ALSA-only programs
+# (aplay/arecord without -D, emulators, some Java/Steam games) fail with
+# "audio open error: No such file or directory" while PipeWire clients are fine.
+pipewire-alsa
+wireplumber
+# Bluetooth audio support for PipeWire (BlueZ SPA plugins).
+libspa-0.2-bluetooth
+# ...and the BlueZ daemon they talk to. The SPA plugins are only a client of
+# org.bluez over D-Bus: without bluez there is no bluetoothd, no
+# bluetoothctl/btmgmt and no bluetooth.service, the controller is never
+# powered up and the plugins have nothing to connect to. Debian 5.87 has no
+# separate bluez-utils package - bluetoothctl and btmgmt ship in bluez, and
+# bluetoothd lives in /usr/libexec/bluetooth/.
+bluez
+pavucontrol
+alsa-ucm-conf
+
+# power / battery
+# UPower is what WirePlumber asks for the battery percentage; without it every
+# start logs `default: Failed to get percentage from UPower: NameHasNoOwner`.
+# waybar's battery module does not need it - it reads /sys/class/power_supply
+# directly (its `bat` option takes the device name) - but UPower is the
+# component that tracks the battery for everything else, and `upower -d` is the
+# way to inspect the fuel gauge.
+upower
+
+# graphics (panfrost) + portals
+libgl1-mesa-dri
+mesa-utils
+xdg-desktop-portal-wlr
+xdg-user-dirs
+
+# fonts / input
+fonts-dejavu-core
+# The theme is written for "AdwaitaMono Nerd Font" / "JetBrainsMono Nerd Font",
+# which Debian does not ship (fonts-adwaita has no Mono variant). JetBrains Mono
+# draws the text; the icon glyphs come from fontconfig fallback:
+#   * Font Awesome (U+F000-U+F2FF)      -> fonts-font-awesome-legacy
+#   * Material Design Icons (plane 15)  -> fonts-materialdesignicons-legacy
+#   * Octicons / Codicons / Devicons    -> fonts-nerd-symbols
+# The two "legacy" packages are required: Debian's fonts-nerd-symbols is
+# DFSG-stripped (no FA, no MDI) and on its own every waybar icon renders as a
+# tofu box with the hex codepoint inside. Verified by rendering the icons with
+# pango-view, which is what waybar uses.
+fonts-jetbrains-mono
+fonts-adwaita
+fonts-nerd-symbols
+fonts-font-awesome-legacy
+fonts-materialdesignicons-legacy
+playerctl

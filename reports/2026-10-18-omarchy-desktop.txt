@@ -1,0 +1,104 @@
+debian-aarch64 system report  2026-10-18 10:22:46 CST
+  ----  UI: omarchy
+
+==> Boot
+  ----  kernel  7.2.7-mt81
+  ----  cmdline cros_secure kern_guid=8249391a-b4fb-824d-88ff-5cadeca79820 quiet loglevel=2 root=UUID=e5f426d5-9819-4456-a75a-88fac2dbe034 rootwait rw
+  OK    depthcharge substituted kern_guid
+  OK    root=UUID= present
+  OK    kernel partition /dev/mmcblk1p1 (kern_guid=8249391a-b4fb-824d-88ff-5cadeca79820)
+  OK    the kernel partition holds a dev-signed FIT
+  OK    device tree: Google Hayato rev1
+  OK    modules for 7.2.7-mt81 installed
+
+==> Firmware
+  OK    firmware mediatek/mt8192/scp.img: requested before the rootfs was up, then loaded
+  OK    no errors from the wireless/Bluetooth/audio subsystems
+
+==> Storage
+  ----  root    /dev/mmcblk1p3 (UUID e5f426d5-9819-4456-a75a-88fac2dbe034)
+  ----  booted from removable storage
+  OK    /etc/fstab matches the mounted root
+  OK    swap active: /dev/zram0
+  OK    /boot is a separate filesystem (/dev/mmcblk1p2) matching /etc/fstab
+  OK    the running kernel's vmlinuz is on /boot
+  OK    root filesystem 34% used
+
+==> Display and GPU
+  OK    display connected on card1-eDP-1
+  OK    panfrost loaded (GPU acceleration available)
+  OK    backlight writable by group video (664 video)
+  OK    session user is in group video
+
+==> Input
+  OK    4 keyboard device(s)
+  OK    6 pointer/touch device(s)
+  ----  devices: cros_ec|cros_ec_buttons|Elan Touchpad|hid-over-i2c 04F3:2E70|hid-over-i2c 04F3:2E70 UNKNOWN|hid-over-i2c 04F3:2E70 UNKNOWN|hid-over-i2c 04F3:2E70 Stylus|hid-over-i2c 04F3:2E70 Stylus|mt8192_mt6359_rt1015p_rt5682 Headset Jack|keyd virtual keyboard|keyd virtual pointer|
+  OK    keyd.service is active
+  OK    keyd leaves the sleep key alone
+  OK    keyd matched its keyboard: 0000:0000:ab51e20b  /etc/keyd/default.conf        (cros_ec)
+
+==> Network
+  OK    wireless interface: wlp1s0
+  ----  regulatory domain: world (country 00), set once NetworkManager or the AP provides one
+  OK    NetworkManager is active (connected:full)
+  OK    1 Wi-Fi profile(s) installed
+  OK    no Wi-Fi profile pins an interface name
+  OK    nmtui present
+
+==> Bluetooth
+  ----  controller 74:4C:A1:89:F9:88 (public)
+  OK    controller powered
+  ----  btmgmt: 	current settings: powered bondable ssp br/edr le secure-conn wide-band-speech 
+
+==> Audio
+  SKIP  pactl is not installed (package pulseaudio-utils)
+  OK    alsa 'default' PCM available (pipewire-alsa)
+
+==> Suspend and power
+  OK    /sys/power/state advertises suspend (freeze mem disk)
+  OK    systemd-logind is active (its button handling is the polkit-free suspend path)
+  OK    polkitd is active (session suspend via loginctl)
+  WARN  no suspend recorded in this boot: press the Lock key to test it
+
+==> Clock
+  ----  America/Mexico_City / local RTC no
+  OK    clock synchronised
+
+==> Session
+  OK    greetd is active
+  OK    greeter vt = 7
+  OK    greeter user _greetd exists
+  OK    tuigreet is installed
+  OK    every command the Omarchy session invokes is installed
+
+==> Omarchy
+  OK    /usr/share/omarchy is present
+  OK    the omarchy Wayland session entry is installed
+  OK    greetd starts the Omarchy session (omarchy-session)
+  OK    ~/.config/hypr/hyprland.lua is present
+  OK    current theme: tokyo-night
+  OK    308 omarchy-* command(s) on PATH
+  FAIL  Hyprland reports configuration errors: [
+	""
+]
+
+==> Fonts and icons
+  OK    font family present: JetBrains Mono
+  OK    font family present: FontAwesome
+  OK    font family present: Material Design Icons
+  OK    font family present: Symbols Nerd Font
+
+==> Declared packages
+  OK    all 162 declared package(s) are installed
+
+==> Journal
+  WARN  55 error-priority line(s) this boot; the last ones:
+          Oct 18 10:11:55 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 10:11:55 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 10:11:55 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 10:11:55 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 10:11:55 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 10:11:55 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+
+==> Summary  49 OK, 2 WARN, 1 FAIL

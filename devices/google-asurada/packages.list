@@ -1,0 +1,22 @@
+# Device-specific packages (Google Hayato / MT8192, board google-asurada).
+# One package per line; blank lines and lines starting with # are ignored.
+
+# firmware
+firmware-realtek
+firmware-mediatek
+firmware-misc-nonfree
+
+# ChromeOS boot chain. These are needed *on the device*, because the card that
+# boots from microSD is also the system that installs to and updates the eMMC:
+#   cgpt                 writes the ChromeOS GPT (scripts/lib-cgpt.sh)
+#   vboot-kernel-utils   provides futility, used to verify the signed kpart
+#                        before it is written to the kernel partition
+#   depthcharge-tools    provides depthchargectl, which builds the kpart
+#                        (scripts/make-kpart.sh) - the same tool boot-deploy
+#                        calls on Nura
+# Note that cgpt and futility are *separate* Debian packages: vboot-utils only
+# ships crossystem and symlinks to futility, so installing it alone leaves both
+# cgpt and futility missing.
+cgpt
+vboot-kernel-utils
+depthcharge-tools

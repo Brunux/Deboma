@@ -1,0 +1,69 @@
+#!/bin/sh
+# Suspend the machine from inside the sway session, and record how it went.
+#
+# The supported path is `loginctl suspend`: systemd-logind runs the inhibitors,
+# notifies the other sessions, and the kernel picks the sleep state from
+# /sys/power/mem_sleep.  It is a D-Bus method guarded by polkit, though: only a
+# user on an *active* session is allowed to call it, and the request fails with
+# "Access denied" whenever logind does not recognise the caller (session never
+# registered, daemon unreachable, ...).  That failure is silent from inside the
+# session, so this script walks down a fallback chain and logs every attempt:
+#
+#   1. loginctl suspend                              (polkit: active session)
+#   2. sudo -n loginctl suspend                      (root: logind skips polkit)
+#   3. sudo -n sh -c 'echo mem > /sys/power/state'   (the kernel, no logind)
+#
+# Each attempt is appended to ~/.cache/sway-suspend.log; when all three fail the
+# diagnostics needed to tell the cases apart are appended too, and a swaynag
+# banner points at the file.  Bound to Alt+Shift+Escape and Alt+Ctrl+Escape
+# (etc/sway/config.d/22-sleep.conf); the Chromebook's Lock key does not need it,
+# because keyd leaves KEY_SLEEP for logind (etc/sway/config.d/21-lock-screen.conf
+# binds the keysym to swaylock only).
+#
+# `sudo -n` is fine here: the install gives the user passwordless sudo.
+
+log_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
+log="$log_dir/sway-suspend.log"
+mkdir -p "$log_dir"
+
+note() { printf '%s\n' "$*" >>"$log"; }
+
+note ""
+note "=== $(date '+%F %T %Z') ==="
+
+# 1. logind, the way a desktop does it.  Returns after the machine wakes up.
+if out=$(loginctl suspend 2>&1); then
+	note "loginctl suspend: ok"
+	exit 0
+fi
+note "loginctl suspend: FAILED: ${out:-no output}"
+
+# 2. logind as root: uid 0 is authorised without polkit.
+if out=$(sudo -n loginctl suspend 2>&1); then
+	note "sudo loginctl suspend: ok"
+	exit 0
+fi
+note "sudo loginctl suspend: FAILED: ${out:-no output}"
+
+# 3. Straight to the kernel.  "mem" means the state selected in mem_sleep
+#    (s2idle or deep); no logind, no inhibitors, nothing to authorise.
+if out=$(sudo -n sh -c 'echo mem > /sys/power/state' 2>&1); then
+	note "/sys/power/state: ok"
+	exit 0
+fi
+note "/sys/power/state: FAILED: ${out:-no output}"
+
+# Nothing worked: record what a later diagnosis needs.
+note "--- diagnostics"
+note "session: ${XDG_SESSION_ID:-<unset>}"
+note "loginctl: $(loginctl list-sessions --no-legend 2>&1 | tr '\n' ';')"
+note "logind: $(systemctl is-active systemd-logind 2>&1)"
+note "mem_sleep: $(cat /sys/power/mem_sleep 2>&1)"
+note "state: $(cat /sys/power/state 2>&1)"
+note "inhibitors: $(systemd-inhibit --list --no-pager 2>&1 | tail -n +4 | tr '\n' ';')"
+note "user: $(id 2>&1)"
+
+if command -v swaynag >/dev/null 2>&1; then
+	swaynag -t warning -m "Suspend failed - see $log" &
+fi
+exit 1

@@ -1,0 +1,16 @@
+# Build artifacts and scratch files (kept outside the repo, but just in case)
+*.img
+*.img.xz
+*.kpart
+build/
+out/
+
+# NetworkManager Wi-Fi profiles: they contain the network PSK, so they are
+# exported to $BUILD_ROOT/wifi (outside the repo) and never committed.
+*.nmconnection
+wifi/
+
+# Written by scripts/rootfs-setup.sh into the copy of this repository that the
+# image carries (/home/$USERNAME/Dev/<repo>/REVISION); it identifies the built
+# image, not a source revision, so it is never committed.
+/REVISION

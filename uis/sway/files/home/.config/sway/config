@@ -1,0 +1,15 @@
+# Personal Sway overlay: keeps the system setup (/etc/sway/config) and adds the
+# per-user bits. Ported from the maintainer's Nura session.
+include /etc/sway/config
+
+# Faster key repeat for every keyboard.
+input type:keyboard {
+    repeat_delay 300
+    repeat_rate 33
+}
+
+# Use the Chromebook Search key by itself for the app launcher ($launcher is
+# defined in /etc/sway/config). Alt+d does the same thing, so drop it to avoid
+# two ways to open the same menu.
+unbindsym Mod1+d
+bindsym --no-repeat --release Super_L exec $launcher

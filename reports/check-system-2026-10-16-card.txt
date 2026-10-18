@@ -1,0 +1,93 @@
+debian-aarch64 system report  2026-10-16 08:56:51 CST
+
+==> Boot
+  ----  kernel  7.2.7-mt81
+  ----  cmdline cros_secure kern_guid=c9b2676d-7292-3647-bc12-37db3d83577e quiet loglevel=2 root=UUID=9cbf4759-7fe9-4713-9b80-6e9dae02df18 rootwait rw
+  OK    depthcharge substituted kern_guid
+  OK    root=UUID= present
+  OK    device tree: Google Hayato rev1
+  OK    modules for 7.2.7-mt81 installed
+
+==> Firmware
+  WARN  firmware the kernel asked for and did not get:
+          mediatek/mt8192/scp.img
+  OK    no errors from the wireless/Bluetooth/audio subsystems
+
+==> Storage
+  ----  root    /dev/mmcblk1p2 (UUID 9cbf4759-7fe9-4713-9b80-6e9dae02df18)
+  ----  booted from removable storage
+  OK    /etc/fstab matches the mounted root
+  WARN  no swap active (zram-tools should provide /dev/zram0)
+  OK    root filesystem 19% used
+
+==> Display and GPU
+  OK    display connected on card1-eDP-1
+  OK    panfrost loaded (GPU acceleration available)
+  OK    backlight writable by group video (664 video)
+  OK    session user is in group video
+
+==> Input
+  OK    4 keyboard device(s)
+  OK    6 pointer/touch device(s)
+  ----  devices: cros_ec|cros_ec_buttons|Elan Touchpad|hid-over-i2c 04F3:2E70|hid-over-i2c 04F3:2E70 UNKNOWN|hid-over-i2c 04F3:2E70 UNKNOWN|hid-over-i2c 04F3:2E70 Stylus|hid-over-i2c 04F3:2E70 Stylus|keyd virtual keyboard|keyd virtual pointer|mt8192_mt6359_rt1015p_rt5682 Headset Jack|
+  OK    keyd.service is active
+  OK    keyd leaves the sleep key alone
+  OK    keyd matched its keyboard: 0000:0000:ab51e20b  /etc/keyd/default.conf        (cros_ec)
+
+==> Network
+  SKIP  iw is not installed
+  OK    NetworkManager is active (connected:full)
+  OK    2 Wi-Fi profile(s) installed
+  OK    no Wi-Fi profile pins an interface name
+  OK    nmtui present
+
+==> Bluetooth
+  ----  controller 74:4C:A1:XX:XX:XX (public)
+  OK    controller powered
+  ----  btmgmt: 	current settings: powered ssp br/edr le secure-conn wide-band-speech 
+
+==> Audio
+  OK    audio server: PulseAudio (on PipeWire 1.6.9)
+  FAIL  the MT8192 sound card is absent: 49	alsa_card.platform-sound	alsa
+  OK    card active profile: HiFi
+  OK    sinks: alsa_output.platform-sound.HiFi__Headphones__sink alsa_output.platform-sound.HiFi__Speaker__sink 
+  OK    alsa 'default' PCM available (pipewire-alsa)
+
+==> Suspend and power
+  OK    /sys/power/state advertises suspend (freeze mem disk)
+  OK    systemd-logind is active (its button handling is the polkit-free suspend path)
+  OK    polkitd is active (session suspend via loginctl)
+  OK    sway-suspend helper is executable
+  OK    5 suspend/resume cycle(s) recorded in this boot
+
+==> Clock
+  ----  America/Mexico_City / local RTC no
+  OK    clock synchronised
+
+==> Session
+  OK    greetd is active
+  OK    greeter vt = 7
+  OK    greeter user _greetd exists
+  OK    tuigreet is installed
+  OK    sway configuration is valid
+  OK    every command the sway configuration invokes is installed
+
+==> Fonts and icons
+  OK    font family present: JetBrains Mono
+  OK    font family present: FontAwesome
+  OK    font family present: Material Design Icons
+  OK    font family present: Symbols Nerd Font
+
+==> Declared packages
+  FAIL  declared but not installed: zstd upower
+
+==> Journal
+  WARN  349 error-priority line(s) this boot; the last ones:
+          Oct 16 08:56:39 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 16 08:56:39 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 16 08:56:40 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 16 08:56:40 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 16 08:56:40 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 16 08:56:40 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+
+==> Summary  41 OK, 3 WARN, 2 FAIL

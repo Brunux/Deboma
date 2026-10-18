@@ -1,0 +1,137 @@
+/* Solarized Dark: restrained terminal aesthetic with consistent module spacing. */
+* {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+/* Solarized Dark base colors */
+window#waybar {
+    background: #002b36; /* base03 */
+    color: #93a1a1;      /* base1 */
+    border-bottom: 1px solid #073642; /* base02 */
+}
+
+tooltip {
+    background: #073642; /* base02 */
+    color: #eee8d5;      /* base2 */
+    border: 1px solid #586e75; /* base01 */
+    border-radius: 6px;
+    padding: 5px 8px;
+}
+
+tooltip label {
+    color: #eee8d5;
+}
+
+/* Equal padding, height, and background for every system indicator, including the centered clock. */
+#cpu,
+#memory,
+#temperature,
+#disk,
+#network,
+#battery {
+    margin: 4px 0;
+    padding: 0 9px;
+    background: #073642; /* base02 */
+    border: 1px solid #09404c;
+    border-radius: 5px;
+}
+
+#cpu         { color: #2aa198; } /* cyan */
+#memory      { color: #859900; } /* green */
+#temperature { color: #b58900; } /* yellow */
+#temperature.critical {
+    color: #dc322f;
+    background: #3b2023;
+    border-color: #dc322f;
+}
+#disk        { color: #268bd2; } /* blue */
+#network     { color: #2aa198; }
+#network.disconnected {
+    color: #dc322f;
+    border-color: #dc322f;
+}
+#battery     { color: #859900; }
+#battery.warning { color: #b58900; }
+#battery.critical:not(.charging) {
+    color: #dc322f;
+    background: #3b2023;
+    border-color: #dc322f;
+}
+#battery.charging,
+#battery.plugged { color: #2aa198; }
+/* The centered clock is plain text, not a rounded module/card. */
+#clock {
+    color: #eee8d5; /* base2 */
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+}
+
+#cpu:hover,
+#memory:hover,
+#temperature:hover,
+#disk:hover,
+#network:hover,
+#battery:hover {
+    background: #0b4652;
+}
+
+/* Workspace buttons look like compact terminal tabs. */
+#workspaces {
+    margin: 4px 2px 4px 0;
+    padding: 0;
+}
+
+#workspaces button {
+    min-width: 22px;
+    padding: 0 7px;
+    margin: 0 2px;
+    background: #073642; /* base02 */
+    color: #93a1a1;      /* base1 */
+    border: 1px solid #09404c;
+    border-radius: 5px;
+    box-shadow: none;
+}
+
+#workspaces button:hover {
+    background: #586e75; /* base01 */
+    color: #fdf6e3;      /* base3 */
+    border-color: #839496; /* base0 */
+}
+
+#workspaces button.focused,
+#workspaces button.active {
+    background: #2aa198; /* cyan */
+    color: #002b36;      /* base03 */
+    border-color: #2aa198;
+    box-shadow: none;
+}
+
+#workspaces button.urgent {
+    background: #dc322f; /* red */
+    color: #fdf6e3;
+    border-color: #dc322f;
+}
+
+#workspaces button label {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+#mode {
+    margin: 4px 0;
+    padding: 0 9px;
+    color: #002b36;
+    background: #b58900; /* yellow */
+    border: 1px solid #b58900;
+    border-radius: 5px;
+}

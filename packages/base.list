@@ -1,0 +1,71 @@
+# Base system packages (device-agnostic).
+# One package per line; blank lines and lines starting with # are ignored.
+# Device-specific packages live in devices/<codename>/packages.list.
+
+# init / kernel plumbing
+systemd-sysv
+dbus
+dbus-user-session
+initramfs-tools
+# zstd: initramfs-tools compresses the initramfs with zstd when the binary is
+# present, otherwise it falls back to gzip and warns.
+zstd
+kmod
+zram-tools
+# NTP client. Debian ships no enabled one by default, and without it the clock
+# is never synchronised (`timedatectl` reports "System clock synchronized: no"
+# and "NTP service: n/a"); the RTC alone drifts.
+systemd-timesyncd
+
+# users / auth
+sudo
+locales
+
+# network
+network-manager
+network-manager-tui
+wpasupplicant
+# Regulatory database: without it cfg80211 logs
+# "failed to load regulatory.db" and the WiFi stays on the world domain.
+wireless-regdb
+iw
+openssh-server
+
+# filesystems / storage
+e2fsprogs
+dosfstools
+parted
+# rsync: scripts/install-emmc.sh copies the running system to the internal
+# storage with it, so it has to exist on the device, not only on the build host.
+rsync
+
+# diagnostics
+# iw: the wireless interface and regulatory domain are otherwise invisible to
+# scripts/check-system.sh (it SKIPs those checks without it), and cfg80211 only
+# logs "failed to load regulatory.db" if wireless-regdb is missing too.
+iw
+
+# audio
+# alsa-utils provides /usr/sbin/alsactl. On card add, udev
+# (90-alsa-restore.rules) and alsa-restore.service run `alsactl restore`,
+# which for a card with no saved state applies the UCM boot sequence. That
+# boot sequence is what connects the MT8192 front-end and back-end DAIs: the
+# UCM's BootSequence is never run automatically by alsa-lib (only by an
+# explicit `set _boot`), so without alsactl the mt8192 PCMs fail to open with
+# "no backend DAIs enabled", ACP marks the HiFi profile unsupported and
+# WirePlumber falls back to a dummy sink (no speaker output). See AGENTS.md.
+alsa-utils
+# (the UCM profiles themselves, alsa-ucm-conf, are part of the UI audio
+# stack and are listed in uis/<ui>/packages.list)
+# Realtime scheduling for PipeWire/WirePlumber (otherwise they log
+# "RTKit error: ServiceUnknown" and run without RT priority).
+rtkit
+
+# quality of life
+ca-certificates
+bash-completion
+nano
+htop
+less
+# lsusb, for diagnosing USB devices (webcam, docks).
+usbutils
