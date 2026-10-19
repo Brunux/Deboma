@@ -8,9 +8,9 @@ It is a handover note, not documentation: delete it once v0.2.0 is published.
 
 | piece | state |
 |---|---|
-| `HEAD` | `4bd56ce` (the audit's second round: the `Update` menu, in both directions), working tree clean |
-| Kernel | **gone with the old build root**: `build-kernel.sh` was restarted by the audit session (`7.2.7-mt81`, mainline 7.2.7 + patches, `make LLVM=1`, ~95 min) |
-| Rootfs | rebuilt at `4bd56ce`: Debian `forky/arm64` + the Omarchy v4 desktop, **4550 MiB**, `omasnap` installed, verified off-device (52 OK / 2 WARN / 0 FAIL, `scripts/verify-rootfs.sh`) |
+| `HEAD` | `2075d23` — the audit's three commits (the `Update` menu in both directions; the corrected claims plus `scripts/verify-rootfs.sh`; the report's abstention while apt runs), working tree clean |
+| Kernel | **gone with the old build root, being rebuilt**: `build-kernel.sh` was restarted by the audit session (`7.2.7-mt81`, mainline 7.2.7 + patches, `make LLVM=1`, ~95 min) |
+| Rootfs | rebuilt at `4bd56ce`: Debian `forky/arm64` + the Omarchy v4 desktop, **4550 MiB**, `omasnap` installed, verified off-device (52 OK / 2 WARN / 0 FAIL, `scripts/verify-rootfs.sh`). It ships the repository copy of `4bd56ce`, three commits behind `HEAD`, so **rebuild it before publishing** (that is what `verify-rootfs.sh`'s WARN points at) |
 | Image | **not built** for this tree. The finished `google-asurada.img` of the previous build went with `/deboma-build` (see below) |
 | Release assets | **missing**: `.img.xz`, `-rootfs.tar.zst`, the standalone `.vmlinuz.kpart` and `SHA256SUMS` — `make-release.sh` was canceled at `2/4 Compressing the image` |
 | On-device report | `reports/2026-10-19-emmc-desktop.txt` — **72 OK, 2 WARN, 0 FAIL** on the eMMC install, taken after the audit's fixes were applied to it by hand |
