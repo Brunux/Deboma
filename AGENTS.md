@@ -102,10 +102,13 @@ docs/                      plan-omarchy.md, recon.md, releases/<version>.md (rel
 Select a device with `DEVICE=<codename> scripts/...`; with a single device it is picked
 automatically. Select the graphical shell with `UI=<name>` (default `omarchy`).
 
-`debs/` is **planned, not present**: the v0.3.0 milestone — the desktop built as Debian packages,
-served from a signed apt archive, with CI carrying upstream's releases into them — is §8 of
-`docs/plan-omarchy.md`. Until it lands, the image still gets the desktop through `uis/omarchy/`,
-and nothing under `debs/` exists to be sourced or run.
+`debs/` is **not** a directory of this repository. The desktop's Debian packaging grew into its own
+platform-independent project, [`Brunux/debian-omarchy-desktop`](https://github.com/Brunux/debian-omarchy-desktop)
+(design plan in its `PLAN.md`; this repository's record of that design is `docs/plan-omarchy.md`
+§8). That project imports this port's device-independent assets and serves a signed apt archive;
+Deboma keeps the device half (kernel, boot chain, Chromebook glue) and, once the archive exists,
+installs `omarchy-desktop` from it instead of vendoring `uis/omarchy/files/usr/share/omarchy/`.
+Until then, the image still gets the desktop through `uis/omarchy/`, which is unchanged.
 
 ### The image carries this repository
 

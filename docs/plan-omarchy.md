@@ -284,6 +284,17 @@ and how it was answered.*
 
 ## 8. Milestone 2 — the port as Debian packages (v0.3.0)
 
+> **Status (2026-10-19): moved.** The platform-independent half of this milestone now lives in its
+> own project, [`Brunux/debian-omarchy-desktop`](https://github.com/Brunux/debian-omarchy-desktop)
+> (phase N0): the plan, the package set, the policy files, the seeder and the CI — with no kernel,
+> no device and no Chromebook. It imports this port's device-independent assets from here
+> (`uis/omarchy/setup.sh`, `packages.list`, the glues and `ttfx`) and never vendor its tree.
+>
+> What stays **here** is the device half: P7 below (`linux-mt81`, the `zz-kpart` hook,
+> `deboma-tools`, `omarchy-hayato`), and the later switch of `build-rootfs.sh` and `uis/omarchy` to
+> that project's archive. This section remains the record of the design and of the measurements
+> that led to it.
+
 `apt install omarchy-desktop` on a stock Debian forky must give the desktop the image carries, from
 the same bytes, and moving to a new upstream release must be a review rather than a re-vendoring.
 
@@ -541,6 +552,11 @@ a red job.
 - The 4 GB/Panfrost risks of §6 do not change: packaging moves bytes, not drivers.
 
 ### 8.10 Phases
+
+*(Moved, 2026-10-19: P0–P6 and P8 are now phases N0–N8 of
+[`Brunux/debian-omarchy-desktop`](https://github.com/Brunux/debian-omarchy-desktop) — see the status
+note at the top of §8. What remains in this repository is P7, and the later consumption of that
+project's archive in place of the vendored tree.)*
 
 **P0 — Policy extraction, no behaviour change.**
 Move `EXCLUDE`/`KEEP`/`HIDE_ROWS` and the menu generator out of `setup.sh` into `debs/policy/` and
