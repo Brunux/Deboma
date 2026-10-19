@@ -577,7 +577,8 @@ scripts/install-omasnap.sh  # copy staged omasnap into a rootfs
 scripts/make-kpart.sh       # signed depthcharge FIT kpart       -> $WORK_DIR/vmlinuz.kpart
 scripts/write-sd.sh [dev]   # partition+populate a microSD/USB (default /dev/mmcblk1)
 scripts/make-image.sh       # distributable disk image from the rootfs (no card needed)
-scripts/make-release.sh     # every release asset + SHA256SUMS -> $WORK_DIR/release-<device>
+scripts/make-release.sh     # publishable release assets + SHA256SUMS
+                            #                      -> $WORK_DIR/release-<device>
 scripts/install-emmc.sh     # install the running system onto /dev/mmcblk0 (CONFIRM=yes)
 scripts/install-kpart.sh    # rewrite the kernel partition this system booted from
 scripts/backup-system.sh    # kernel partition + GPT + /boot + rootfs tars into a directory
@@ -629,6 +630,15 @@ artifact while anything is left; the release rule is:
 - A release is: `scripts/make-release.sh`, notes in `docs/releases/<version>.md` (committed, and
   reused as the annotated tag message and the GitHub release body), and the assets attached to the
   tag. `docs/releases/v0.1.0.md` is the first one and shows the shape.
+- **GitHub refuses a release asset of 2 GiB or more** (the API answers `size must be less than
+  2147483648`). The rootfs tarball is already past that line at 2.2 GiB, and the compressed image
+  sits ~70 MB under it, so `make-release.sh` splits any asset that does not fit into equal parts
+  named `<asset>.part-00`, `.part-01`, … and **removes the original**: the parts are the published
+  copy of that asset and are rejoined with `cat <asset>.part-*` (the tarball then goes through
+  `zstd -dc` as it would whole). `$OUTDIR/PUBLISHED` lists exactly what to attach, and
+  `SHA256SUMS` covers exactly those files — it used to include the uncompressed `.img`, which is
+  never published, so the documented `sha256sum -c SHA256SUMS` reported a missing file on every
+  download. Check the size of an asset against that limit before promising a single-file download.
 
 `scripts/backup-system.sh` is the counterpart of `install-emmc.sh`: it writes the kernel partition
 the system booted from (resolved from `kern_guid`, like `install-kpart.sh`), the GPT, `/boot` and

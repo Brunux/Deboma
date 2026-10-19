@@ -31,14 +31,14 @@ First target: the **Google Hayato** Chromebook (MediaTek MT8192, `google-asurada
 
 ## Download and flash a precompiled image
 
-The [`v0.1.1`](docs/releases/v0.1.1.md) release publishes the image built from this repository:
+The [`v0.2.0`](docs/releases/v0.2.0.md) release publishes the image built from this repository:
 
 | asset | what it is |
 |---|---|
 | `google-asurada.img.xz` | the disk image: the three ChromeOS GPT partitions (kernel, `/boot`, root), ready for `dd` |
-| `google-asurada-rootfs.tar.zst` | the same root filesystem as a tarball, with `/boot` inside it, for building a card by hand |
+| `google-asurada-rootfs.tar.zst.part-00`, `.part-01` | the same root filesystem as a zstd tarball, with `/boot` inside it, for building a card by hand; in two parts because GitHub refuses an asset of 2 GiB or more |
 | `google-asurada.vmlinuz.kpart` | the signed FIT kernel partition that matches that image |
-| `SHA256SUMS` | SHA-256 of the three assets above |
+| `SHA256SUMS` | SHA-256 of the files above |
 
 ```sh
 sha256sum -c SHA256SUMS
@@ -54,8 +54,10 @@ The image is 6 GiB, so a larger card keeps the space after `p3` unused. To use t
 write the tarball instead: `write-sd.sh` sizes `p3` to the device it is given.
 
 ```sh
-sudo tar -xpf google-asurada-rootfs.tar.zst -C /mnt/rootfs   # as root, so owners and ACLs survive
-ROOTFS=/mnt/rootfs sudo scripts/write-sd.sh /dev/mmcblk1     # from a clone of this repository
+# join the parts first, and extract as root so owners, ACLs and xattrs survive
+cat google-asurada-rootfs.tar.zst.part-* | zstd -dc |
+  sudo tar --acls --xattrs -xpf - -C /mnt/rootfs
+ROOTFS=/mnt/rootfs sudo scripts/write-sd.sh /dev/mmcblk1   # from a clone of this repository
 ```
 
 The released image carries **no saved Wi-Fi networks** and no host identity: the build rootfs

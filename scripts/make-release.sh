@@ -1,11 +1,12 @@
 #!/bin/bash
 # Build every asset of one GitHub release into a directory:
 #
-#   <device>.img             the disk image (make-image.sh)
+#   <device>.img             the disk image (make-image.sh); stays on this host
 #   <device>.img.xz          the same image, compressed for download
 #   <device>-rootfs.tar.zst  the root filesystem as a tarball
 #   <device>.vmlinuz.kpart   the kernel partition that matches the image
-#   SHA256SUMS               hashes of the four above
+#   SHA256SUMS               hashes of the published files, nothing else
+#   PUBLISHED                the published files, one per line (what to attach)
 #
 # Usage: make-release.sh [OUTDIR]     (default $WORK_DIR/release-<device>)
 #
@@ -13,7 +14,15 @@
 # docs/releases/ so they are versioned like everything else, and reused for the
 # annotated tag and for the GitHub release.
 #
-# Three things are worth knowing about the assets:
+# Four things are worth knowing about the assets:
+#
+#   * GitHub refuses a release asset of 2 GiB or more ("size must be less than
+#     2147483648"), and the rootfs tarball went past that line the first time it
+#     was published. An asset that does not fit is split into equal parts
+#     (<name>.part-00, .part-01, ...) and the original is removed: the parts are
+#     the published form of it, and they are rejoined with `cat`. The image and
+#     the kpart fit today and go through the same check, so this does not have to
+#     be discovered again by whoever publishes the release that outgrows it.
 #
 #   * Everything that is published is sanitized and asserted clean
 #     (scripts/lib-dist.sh): a released image must not carry the maintainer's
@@ -24,8 +33,12 @@
 #     their partitions from scripts/write-sd.sh or scripts/install-kpart.sh,
 #     which build it from the disk they are writing to.
 #   * The tarball is the root filesystem with /boot inside it (the layout mounts
-#     the boot partition there), for writing a card by hand:
-#       sudo ROOTFS=<extracted> scripts/write-sd.sh <device>
+#     the boot partition there), for writing a card by hand. It arrives split, so
+#     it is reassembled first (only the parts are published, never the whole
+#     file):
+#       cat <device>-rootfs.tar.zst.part-* | zstd -dc |
+#         sudo tar --acls --xattrs -xpf - -C <dir>
+#       sudo ROOTFS=<dir> scripts/write-sd.sh <device>
 #     which generates the fstab and the kpart for those partitions. Its own
 #     /etc/fstab is the unconfigured one the build leaves behind.
 set -euo pipefail
@@ -50,6 +63,33 @@ IMG="$OUTDIR/$DEVICE.img"
 TARBALL="$OUTDIR/$DEVICE-rootfs.tar.zst"
 KPART_OUT="$OUTDIR/$DEVICE.vmlinuz.kpart"
 STAGE="$WORK_DIR/release-stage-$DEVICE"
+
+# GitHub's release asset limit, in bytes: the API answers "size must be less
+# than 2147483648" for anything from 2 GiB up.
+GH_ASSET_MAX=2147483647
+
+# Print the published path(s) of one asset: the file itself when it fits on
+# GitHub, otherwise the parts it was split into, one per line. An asset is
+# published either whole or split, never both, so the original is removed when it
+# is split: leaving it behind would make the directory look attachable and only
+# fail at the upload, which is how this was found.
+publish_parts() {
+	local file size parts chunk
+	file="$1"
+	size="$(stat -c %s "$file")"
+	if [ "$size" -le "$GH_ASSET_MAX" ]; then
+		printf '%s\n' "$file"
+		return 0
+	fi
+	# As few parts as fit, as equal as the size allows: the 2.2 GiB tarball comes
+	# out as two parts of ~1.1 GiB, each small enough to be resumed on its own.
+	parts=$(( (size + GH_ASSET_MAX - 1) / GH_ASSET_MAX ))
+	chunk=$(( (size + parts - 1) / parts ))
+	log "Splitting $(basename "$file") ($size bytes) into $parts parts of $chunk (GitHub's limit is $GH_ASSET_MAX)"
+	split -b "$chunk" -d -a 2 "$file" "$file.part-"
+	rm -f "$file"
+	ls "$file".part-*
+}
 
 mkdir -p "$OUTDIR"
 [ -d "$ROOTFS" ] || die "rootfs not found: $ROOTFS (run build-rootfs.sh first)"
@@ -93,13 +133,24 @@ losetup -d "$LOOP"
 "$REPO_DIR/scripts/make-kpart.sh" "$ROOTFS" "$KPART_OUT" "root=UUID=$ROOT_UUID_IMG rootwait rw"
 kpart_verify "$KPART_OUT"
 
+log "Published files"
+# What is attached to the release, and what SHA256SUMS covers - exactly those
+# files and nothing else. The uncompressed image stays on this host: it is 6 GiB
+# and `sha256sum -c SHA256SUMS` would report it missing on every download.
+PUBLISHED="$OUTDIR/PUBLISHED"
+: >"$PUBLISHED"
+for asset in "$IMG.xz" "$TARBALL" "$KPART_OUT"; do
+	publish_parts "$asset" >>"$PUBLISHED"
+done
+sed 's|^.*/||;s/^/  /' "$PUBLISHED"
+
 log "Checksums"
 (
 	cd "$OUTDIR"
-	sha256sum "$(basename "$IMG")" "$(basename "$IMG").xz" "$(basename "$TARBALL")" \
-		"$(basename "$KPART_OUT")" >SHA256SUMS
-	cat SHA256SUMS
-) | sed 's/^/  /'
+	while IFS= read -r published; do sha256sum "$(basename "$published")"; done <"$PUBLISHED"
+) >"$OUTDIR/SHA256SUMS"
+sed 's/^/  /' "$OUTDIR/SHA256SUMS"
 
 log "Assets in $OUTDIR"
 ls -lh "$OUTDIR" | sed 's/^/  /'
+log "Attach SHA256SUMS and the $(wc -l <"$PUBLISHED") published file(s) above"
