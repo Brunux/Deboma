@@ -73,6 +73,11 @@ GH_ASSET_MAX=2147483647
 # published either whole or split, never both, so the original is removed when it
 # is split: leaving it behind would make the directory look attachable and only
 # fail at the upload, which is how this was found.
+#
+# stdout is the manifest, so nothing here may print to it except the paths: a
+# `log` without the `>&2` ends up *inside* $PUBLISHED, and the checksum loop then
+# reads the banner as a filename ("sha256sum: '': No such file or directory" was
+# v0.2.0's last output for exactly that reason).
 publish_parts() {
 	local file size parts chunk
 	file="$1"
@@ -85,7 +90,7 @@ publish_parts() {
 	# out as two parts of ~1.1 GiB, each small enough to be resumed on its own.
 	parts=$(( (size + GH_ASSET_MAX - 1) / GH_ASSET_MAX ))
 	chunk=$(( (size + parts - 1) / parts ))
-	log "Splitting $(basename "$file") ($size bytes) into $parts parts of $chunk (GitHub's limit is $GH_ASSET_MAX)"
+	log "Splitting $(basename "$file") ($size bytes) into $parts parts of $chunk (GitHub's limit is $GH_ASSET_MAX)" >&2
 	split -b "$chunk" -d -a 2 "$file" "$file.part-"
 	rm -f "$file"
 	ls "$file".part-*
@@ -147,7 +152,10 @@ sed 's|^.*/||;s/^/  /' "$PUBLISHED"
 log "Checksums"
 (
 	cd "$OUTDIR"
-	while IFS= read -r published; do sha256sum "$(basename "$published")"; done <"$PUBLISHED"
+	while IFS= read -r published; do
+		[ -n "$published" ] || continue
+		sha256sum "$(basename "$published")"
+	done <"$PUBLISHED"
 ) >"$OUTDIR/SHA256SUMS"
 sed 's/^/  /' "$OUTDIR/SHA256SUMS"
 
