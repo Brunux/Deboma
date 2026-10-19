@@ -15,8 +15,8 @@ First target: the **Google Hayato** Chromebook (MediaTek MT8192, `google-asurada
   of the booted image comes back clean (kept in [`reports/`](reports/)). The eMMC install is
   validated on hardware, and the running installation can be backed up and restored
   (`scripts/backup-system.sh`, `scripts/restore-system.sh`).
-- **Release:** [`v0.1.1`](docs/releases/v0.1.1.md) — the last precompiled image; it shipped
-  the earlier (sway) session, before the Omarchy desktop (see
+- **Release:** [`v0.2.0`](docs/releases/v0.2.0.md) — the Omarchy v4 desktop, built and published
+  from this tree; `v0.1.1` shipped the earlier (sway) session (see
   [Download and flash](#download-and-flash-a-precompiled-image)).
 - **Plan:** [`docs/plan-omarchy.md`](docs/plan-omarchy.md)
 - **Recon of the reference machine:** [`docs/recon.md`](docs/recon.md)
