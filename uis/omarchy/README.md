@@ -122,6 +122,18 @@ legacy `hyprland.conf`. Debian `forky` ships **hyprland 0.56.2**, so the pinned
 tree's Lua configuration is used as-is; v3-era `hyprland.conf` material is not
 ported.
 
+The port changes exactly one Hyprland default: **the touchpad scrolls naturally**
+(`natural_scroll = true`), the phone-like direction, where upstream ships
+`natural_scroll = false`. `~/.config/hypr/input.lua` is loaded *after* the
+defaults (`hyprland.lua` requires `hypr.input` last), so `setup.sh` appends the
+same `hl.config` block to that file — one key changes, because `hl.config`
+merges and the layout, `us`, the tap/drag flags and the repeat rate survive. It
+is *appended* rather than shipped as a replacement (or as a copy of upstream's
+template) so the file's commented examples stay usable.
+`hyprctl getoption input:touchpad:natural_scroll -j` reports the effective value —
+the **device-scoped** option, because the global `input:natural_scroll` reads
+`"set": false` even while the touchpad scrolls inverted.
+
 ### The shell (Quickshell)
 
 The shell's QML imports (`Quickshell*`, `qs.Commons`, `qs.Ui`, `QtQuick*`,
@@ -238,14 +250,6 @@ check in `scripts/check-system.sh`.
   LayerShellQt source is not worth a second component. `libqt6widgets6` and
   `libqt6dbus6` are in `packages.list` because the binary needs the Widgets
   stack, which the QML modules do not pull in.
-- **Touchpad scroll direction.** Upstream's default is
-  `natural_scroll = false`. This machine is used with natural (inverse)
-  scrolling, set as a **personal override** in `~/.config/hypr/input.lua` —
-  the file Omarchy reserves for that — so the port keeps shipping upstream's
-  default. Only that one key is set: `hl.config` merges, so the layout, still
-  `us`, and the touchpad defaults survive (checked with `hyprctl getoption`).
-  Making it the port's default is a two-line change in `setup.sh` if it should
-  apply to every install.
 - **`omarchy toggle screensaver` writes a flag that nothing reads.** In this
   pinned revision the screensaver's availability is the configured timeout
   (`idle.screensaver`, 150 s in `shell/shell.qml`), read by
@@ -394,22 +398,29 @@ is missing.
 **Found, left as-is (with the reason):**
 
 - `omarchy-provision-first-run` is **excluded** (with the
-  `omarchy-provision-*`/`omarchy-install-*` families) but still *runs* on every
-  login: Hyprland prepends `$OMARCHY_PATH/bin` to the session PATH, so the
-  autostart entry resolves. Its steps are
-  `bash $OMARCHY_PATH/install/user/first-run/*.sh`, and `install/` is not
-  vendored, so each login appends one attempt to
-  `~/.local/state/omarchy/first-run.log` — the fingerprint/agent hook steps exit
-  1, the user-unit, GNOME, GTK-paste, speaker and notification steps exit 127 —
-  and the first-run marker is never written, so it retries on the next login
-  (three attempts so far, one per boot). The `omarchy-provision-user` it calls
-  first stops at `source $OMARCHY_INSTALL/user/all.sh` for the same reason, so
-  *its* `finalize-user` marker never appears either: the steps above that line
-  (the agent-skill symlinks, the xdg user directories, the GTK bookmarks) run once
-  per login, and every one of them is idempotent. None of this reaches the journal
-  or the screen. It is the clearest case of
+  `omarchy-provision-*`/`omarchy-install-*` families), and it does *not* run at
+  login any more: `setup.sh` marks its gate (`first-run-user`) once at build
+  time, after doing what the script would have done. The autostart entry in
+  `default/hypr/autostart.lua` still resolves — Hyprland prepends
+  `$OMARCHY_PATH/bin` to the session PATH — and that is how the retry used to
+  happen: its steps are `bash $OMARCHY_PATH/install/user/first-run/*.sh`, and
+  `install/` is not vendored, so each login appended one attempt to
+  `~/.local/state/omarchy/first-run.log` (the fingerprint/agent hook steps exit
+  1, the user-unit, GNOME, GTK-paste, speaker and notification steps 127),
+  marked nothing, and retried at the *next* login — three attempts, one per boot.
+  The port instead runs `omarchy-provision-user` **once, at build time, as the
+  desktop user** (`setpriv`), which performs the per-user prefix the script would
+  have performed anyway — the agent-skill symlinks, the xdg user directories, the
+  GTK bookmarks — and then stops in the same place it always did, at
+  `source $OMARCHY_INSTALL/user/all.sh`. Its `finalize-user` marker therefore
+  stays **unmarked on purpose**: by upstream's definition the finalization is not
+  complete, only the per-login cost is gone. Vendoring `install/` later means
+  deleting `~/.local/state/omarchy/done/first-run-user` to re-arm it. None of this
+  reaches the journal or the screen, and a login now costs no work at all
+  (`omarchy-provision-first-run` exits in ~10 ms). It is the clearest case of
   the session-PATH rule above: the farm keeps the entry off a login shell, the
-  desktop still starts it. The GTK/GNOME end state is nevertheless correct —
+  desktop still starts it — the marker, not the farm, is what makes it cheap.
+  The GTK/GNOME end state is nevertheless correct —
   `omarchy-theme-set` runs
   `omarchy-theme-set-gnome`, and `Adwaita-dark` with `Yaru-magenta` is exactly
   Tokyo Night's intent.

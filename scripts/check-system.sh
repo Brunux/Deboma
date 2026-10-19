@@ -395,6 +395,24 @@ else
 	skip "keyd is not installed"
 fi
 
+# This port scrolls the touchpad naturally (two fingers up move the content up);
+# upstream ships natural_scroll = false and setup.sh appends the override to
+# ~/.config/hypr/input.lua. Hyprland keeps the effective value in the
+# device-scoped input:touchpad: option - the global input:natural_scroll stays
+# false either way, and asking it reports "set: false" even while the touchpad
+# scrolls inverted (verified on 6.x). Only a running session can answer, so this
+# SKIPs without one.
+if have hyprctl && hyprctl -j monitors >/dev/null 2>&1; then
+	_ns="$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null)"
+	if grep -q '"bool": *true' <<<"$_ns"; then
+		ok "the touchpad scrolls naturally (this port's default)"
+	else
+		fail "input:touchpad:natural_scroll is not on: the touchpad scrolls Omarchy's way ($_ns)"
+	fi
+else
+	skip "no running Hyprland to ask for the touchpad scroll direction"
+fi
+
 # ---------------------------------------------------------------------------
 section "Network"
 # ---------------------------------------------------------------------------
@@ -666,6 +684,16 @@ section "Omarchy"
 			*)
 				fail "JetBrainsMono Nerd Font resolves to '$_fam', not JetBrains Mono: the terminals and the bar render in the wrong font (uis/omarchy/files/etc/fonts/conf.d)" ;;
 		esac
+	fi
+	# Omarchy's autostart runs `omarchy-provision-first-run` at every login; that
+	# script is gated on this marker and its steps need the install/ tree this
+	# port does not vendor, so an unmarked system pays for a failing run at each
+	# login (one line per boot in ~/.local/state/omarchy/first-run.log) and the
+	# boot after it is slower than it should be. setup.sh marks it once.
+	if [ -f "$HOME/.local/state/omarchy/done/first-run-user" ]; then
+		ok "first-run provisioning is marked done: no retry at login"
+	else
+		fail "~/.local/state/omarchy/done/first-run-user is missing: every login retries the first-run steps (setup.sh marks it)"
 	fi
 	# The vendored application entries have to reach the XDG apps directory, or the
 	# launcher and the dock cannot see X, YouTube, the Google web apps, and so on.

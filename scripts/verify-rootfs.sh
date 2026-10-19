@@ -216,6 +216,10 @@ check "~/.bashrc sources Omarchy's shell environment" \
 	bash -c "grep -q 'source .*omarchy/default/bashrc' '$HOME_DIR/.bashrc'"
 check "bat is reachable by its Arch name" test -e "$ROOTFS/usr/local/bin/bat"
 check "shell.json is seeded" test -s "$HOME_DIR/.config/omarchy/shell.json"
+check "the touchpad scrolls naturally (port default in ~/.config/hypr/input.lua)" \
+	grep -q 'omarchy-debian: natural scroll' "$HOME_DIR/.config/hypr/input.lua"
+check "first-run provisioning is marked done (no retry at login)" \
+	test -f "$HOME_DIR/.local/state/omarchy/done/first-run-user"
 # The extension hides nothing when it is empty; what it hides is the build's own
 # EXCLUDE list, so only a positive count is asserted here (the exact number is
 # printed by setup.sh at build time, and moves with the pinned menu).

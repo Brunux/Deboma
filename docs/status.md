@@ -166,12 +166,8 @@ scripts/make-release.sh                               # image, xz -T0 -6, tar zs
 
 ## Not part of this build (do not mistake for a regression)
 
-- **Touchpad scrolling is inverted** on the microSD card only: `~/.config/hypr/input.lua` sets
-  `natural_scroll = true`. It is a personal override and is deliberately **not** in the repository,
-  so a freshly written card keeps Omarchy's default.
-- `omarchy-provision-first-run` retries its first-run steps on every login (its autostart entry is
-  excluded by design, but Hyprland prepends `$OMARCHY_PATH/bin` to the session `PATH`, so the call
-  resolves anyway), leaving one failed step per line in
-  `~/.local/state/omarchy/first-run.log`; `Owe.LockFeed` is deferred with the `omarchy-pkgs` set, and
+- Natural (inverse) touchpad scrolling and the first-run marker were the last two items here; both
+  are now the port's own defaults (`setup.sh`), so a fresh card scrolls naturally and pays no
+  first-run retry at login. `Owe.LockFeed` is deferred with the `omarchy-pkgs` set, and
   stock Quickshell 0.3.2 logs `Unrecognized pragma "OmarchyLoadPatch"`. All documented in the
   release notes.

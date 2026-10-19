@@ -429,15 +429,25 @@ uncommitted changes, since those do not travel into the image.
   `default/hypr/envs.lua` prepends it, so an excluded command still **runs** when the desktop reaches
   it (the floating terminal included — `xdg-terminal-exec -e bash -c`, which inherits the session
   environment) and dies on what it reaches for — `pacman`, LocalSend, the un-vendored `install/`
-  tree — not on its own name. `omarchy-provision-first-run` retries its first-run steps at every
-  login for exactly this reason, appending one attempt per boot to
-  `~/.local/state/omarchy/first-run.log` (the hook steps exit 1, the user-unit/GNOME/GTK/speaker
-  steps 127) and never marking the flag; the `omarchy-provision-user` it calls first stops the same
-  way at `source $OMARCHY_INSTALL/user/all.sh`, so that marker is never written either and its
-  idempotent prefix (agent-skill symlinks, xdg user dirs, GTK bookmarks) re-runs each login. Nothing
+  tree — not on its own name. `omarchy-provision-first-run` was the live example: its autostart entry
+  resolved, its steps need the un-vendored `install/`, so every login appended one attempt to
+  `~/.local/state/omarchy/first-run.log` (hook steps exit 1, user-unit/GNOME/GTK/speaker steps 127)
+  and never marked the flag. The port now runs `omarchy-provision-user`'s per-user prefix **once at
+  build time** (`setup.sh`, via `setpriv` as the desktop user, since the script refuses to run as
+  root) and marks `first-run-user`, so the autostart entry costs ~10 ms and nothing else;
+  `finalize-user` stays unmarked because the script still stops at
+  `source $OMARCHY_INSTALL/user/all.sh` — only the per-login cost is removed, not the incompleteness.
+  Vendoring `install/` later means deleting `~/.local/state/omarchy/done/first-run-user`. Nothing
   of it reaches the journal or the screen. What the
   farm decides is what a *login* shell (SSH, a TTY) sees; what keeps the desktop from *offering* the
   feature is the generated row hiding.
+- **Natural scrolling is this port's default** (`natural_scroll = true`, the phone-like direction);
+  upstream ships `false`. Hyprland's per-device option is the one that takes effect, so
+  `hyprctl getoption input:touchpad:natural_scroll` is the honest question and the **global**
+  `input:natural_scroll` reads `"set": false` even while the touchpad scrolls inverted. `setup.sh`
+  *appends* the `hl.config` block to the seeded `~/.config/hypr/input.lua` (the user file is loaded
+  after the defaults, and `hl.config` merges, so only that key changes) instead of shipping a
+  replacement, which would throw away upstream's commented examples.
 
 ### ChromeOS GPT (`cgpt`)
 

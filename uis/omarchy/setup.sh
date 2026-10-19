@@ -197,6 +197,36 @@ done
 
 chown -R "$USERNAME:$USERNAME" "$HOME/.config"
 
+# Natural (inverse) scrolling is this port's default: two fingers up move the
+# content up, as on a phone. Upstream's default/hypr/input.lua sets
+# natural_scroll = false, and the user file is loaded *after* the defaults
+# (hyprland.lua requires hypr.input last), so the same hl.config block here wins
+# and only that key changes: hl.config merges, which keeps the layout, the tap
+# and drag flags, the repeat rate and the rest of the touchpad block. Appended
+# rather than replacing config/hypr/input.lua so the documented examples stay.
+_hypr_input="$HOME/.config/hypr/input.lua"
+if [ -f "$_hypr_input" ]; then
+	if ! grep -q 'omarchy-debian: natural scroll' "$_hypr_input"; then
+		cat >>"$_hypr_input" <<'EOF'
+
+-- omarchy-debian: natural scroll on by default.
+-- Upstream ships natural_scroll = false; this port defaults to the phone-like
+-- direction (two fingers up move the content up). Set it to false, or delete
+-- this block, to get Omarchy's default back.
+hl.config({
+  input = {
+    touchpad = {
+      natural_scroll = true,
+    },
+  },
+})
+EOF
+	fi
+	chown "$USERNAME:$USERNAME" "$_hypr_input"
+else
+	warn "$_hypr_input is missing; the touchpad keeps upstream's scroll direction"
+fi
+
 # The screensaver and the About panel paint the Omarchy logo from plain text:
 # omarchy-screensaver runs `ttfx -i ~/.config/omarchy/branding/screensaver.txt`
 # and the About panel reads ~/.config/omarchy/branding/about.txt. Upstream's
@@ -384,6 +414,36 @@ if [ -f "$_menu" ]; then
 else
 	warn "$_menu is missing; the Arch-only menu rows stay visible"
 fi
+
+# First-run provisioning is marked done here, at build time. Omarchy's autostart
+# entry (default/hypr/autostart.lua) runs `omarchy-provision-first-run` at every
+# login and that script is gated on the marker below; unmarked, it walks its
+# steps - `bash $OMARCHY_PATH/install/user/first-run/*.sh`, a tree this port does
+# not vendor - exits 127 and retries at the *next* login, appending one attempt
+# per boot to ~/.local/state/omarchy/first-run.log and costing a login the
+# failed work every time. What it would have done once is done here instead:
+# omarchy-provision-user's per-user prefix (dev-aware skill symlinks, the xdg
+# user dirs and the GTK bookmarks), which needs a real $HOME and a non-root
+# user, so it cannot be a plain file under files/home/.
+#
+# The prefix stops at `source $OMARCHY_INSTALL/user/all.sh`, so finalize-user
+# stays unmarked on purpose - the script is not finished by upstream's
+# definition, only its per-login cost is removed. Vendoring install/ later means
+# deleting the first-run-user marker (`rm ~/.local/state/omarchy/done/first-run-user`).
+log "Running the per-user provisioning prefix once"
+if ! command -v setpriv >/dev/null 2>&1 || [ ! -x "$OMARCHY_PATH/bin/omarchy-provision-user" ]; then
+	warn "setpriv or omarchy-provision-user is missing; the per-user prefix was not run"
+elif setpriv --reuid="$(id -u "$USERNAME")" --regid="$(id -g "$USERNAME")" --clear-groups \
+	env HOME="$HOME" OMARCHY_PATH="$OMARCHY_PATH" \
+	PATH="$OMARCHY_PATH/bin:/usr/local/bin:/usr/bin:/bin" \
+	bash "$OMARCHY_PATH/bin/omarchy-provision-user"; then
+	warn "omarchy-provision-user completed - install/ is vendored? keep finalize-user, revisit the first-run marker"
+else
+	log "  omarchy-provision-user stopped at the missing install/ tree, as expected"
+fi
+install -d -m 0755 -o "$USERNAME" -g "$USERNAME" "$HOME/.local/state/omarchy/done"
+install -m 0644 -o "$USERNAME" -g "$USERNAME" /dev/null \
+	"$HOME/.local/state/omarchy/done/first-run-user"
 
 # Materialise the default theme (Tokyo Night), which upstream's installer does at
 # install time. Headless, because there is no session in the chroot; if a tool it
