@@ -8,7 +8,7 @@ It is a handover note, not documentation: delete it once v0.2.0 is published.
 
 | piece | state |
 |---|---|
-| `HEAD` | `5bf3aa0` (pushed to `origin/main`), working tree clean |
+| `HEAD` | `5bf3aa0` when this was written; the tree is now at `389d321` (see the update below), working tree clean |
 | Kernel | built and staged: `7.2.7-mt81`, mainline 7.2.7 + patches, `make LLVM=1 -j3` (95 min) |
 | Rootfs | built: Debian `forky/arm64` + the Omarchy v4 desktop, **4607 MiB**, its `/etc/debian-aarch64-revision` says `commit fd3de8c` |
 | Image | **complete**: `google-asurada.img`, 6144 MiB, kpart already written into `p1` |
@@ -18,6 +18,30 @@ It is a handover note, not documentation: delete it once v0.2.0 is published.
 The image is self-consistent and bootable as it is: the kpart inside `p1` embeds that image's own
 `root=UUID`. The `.vmlinuz.kpart` lying in `work/` is from the *earlier* attempt and belongs to a
 different root UUID — do not publish it.
+
+## Update — 2026-10-19, from the internal install
+
+The eMMC install was audited against the Omarchy manual and what it found is fixed on `main`
+(`389d321`, "Audit the installed desktop and fix the four silent failures it found"). What that
+means for the build below:
+
+- **The image already in `/deboma-build/work` is behind the tree.** Write the card with
+  `scripts/write-sd.sh` (it takes the current rootfs), or re-run `build-rootfs.sh` +
+  `install-kernel.sh` before `make-release.sh`, as in § *Then: finish the release*.
+- `scripts/build.sh` now also runs **`build-omasnap.sh` + `install-omasnap.sh`** (the capture
+  overlay, built from the tag in `uis/omarchy/omasnap.version`). That needs the Qt6 build deps
+  `scripts/00-deps.sh` installs and adds ~6 minutes before the rootfs step.
+- `check-system.sh` gained one check per finding (the screensaver renderer and its seeded art, the
+  lock screen's PAM file and the running shell's `passwordPam`, `omasnap`, the shell-environment
+  helpers, `~/.bashrc` sourcing Omarchy's rc), so the rebuild's report has **eight more OKs** than
+  the counts quoted elsewhere in this file.
+- `reports/2026-10-19-emmc-desktop.txt` is the audit's report — **68 OK, 2 WARN, 0 FAIL** — taken on
+  the eMMC install *after* the fixes were applied by hand, so it documents the hardware and the new
+  checks, not the image. The clean-rebuild report of § *Then: close F7* is still what the release
+  needs. `docs/releases/v0.2.0.md` now carries the audit; if these fixes should ship as `v0.2.1`
+  instead, that paragraph moves with them.
+- The touchpad override below is unchanged: it is still a personal file on this machine and still
+  deliberately not in the repository.
 
 ## Where it lives
 
