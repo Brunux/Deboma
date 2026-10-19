@@ -147,7 +147,10 @@ network, power, session, lock); the rest is omitted rather than stubbed, and
 The **command menu** is part of that Arch surface. The vendored
 `default/omarchy/omarchy-menu.jsonc` fills its `Install` and `Remove` rows, and
 several `Update`/`Setup` rows, with the very commands above, so a click opened a
-floating terminal that died on `command not found`. `setup.sh` hides exactly
+floating terminal that died on what the row's command reached for — `pacman`,
+LocalSend, the un-vendored `install/` tree. (The command itself still resolves
+there: Hyprland prepends `$OMARCHY_PATH/bin` to the session `PATH`, upstream's
+own `default/hypr/envs.lua`.) `setup.sh` hides exactly
 those rows through the shell's own extension point,
 `~/.config/omarchy/extensions/omarchy-menu.jsonc` (`Menu.qml` merges it over the
 vendored menu, and a submenu left with no visible row disappears with it), and
@@ -197,8 +200,8 @@ check in `scripts/check-system.sh`.
 | The keybindings cheat sheet logged `xkbcli: not found` every time it opened, and the bar's keyboard-layout label fell back | `xkbcli` is what names Hyprland's XKB keycodes for the cheat sheet and maps the active keymap to its short label; Debian ships the CLI in **`libxkbcommon-tools`**, apart from the library it belongs to. | `libxkbcommon-tools` in `packages.list`; the cheat sheet now lists 235 bindings with a clean stderr. |
 | `omarchy transcode` failed on every file | `file` was missing, so the MIME sniff failed before the menu could tell a picture from a video. | `file` in `packages/base.list`; `omarchy-transcode`/`-ascii` are no longer excluded (they only ever needed tools this port installs). |
 | `omarchy theme list` printed `find: ~/.config/omarchy/themes/: No such file or directory` before its 23 themes | that directory is where a theme of your own goes, and nothing creates it on a fresh v4 install: upstream's `omarchy-upgrade-to-quattro` does it only for systems coming from v3. | `setup.sh` creates it, which is also the chapter 43 workflow's starting point. |
-| The Share menu opened flows that died on `command not found` | every Share row funnels into **LocalSend**, which Debian does not package. | the parent row `trigger.share` is hidden, which takes the submenu with it. A submenu parent has no `action`, so `setup.sh`'s generator now tests the row *id* before it requires an action. |
-| `Setup > Input Methods` died on `command not found` | it calls `omarchy-setup-input`, which installs Fcitx5 through `omarchy-pkg-add`. | excluded with the rest of the Arch installers; the key binding stays and does nothing without `fcitx5`. |
+| The Share menu opened flows that died on LocalSend | every Share row funnels into **LocalSend**, which Debian does not package. | the parent row `trigger.share` is hidden, which takes the submenu with it. A submenu parent has no `action`, so `setup.sh`'s generator now tests the row *id* before it requires an action. |
+| `Setup > Input Methods` died in its floating terminal | it calls `omarchy-setup-input`, which installs Fcitx5 through `omarchy-pkg-add` — pacman, which is not there. | excluded with the rest of the Arch installers; the key binding stays and does nothing without `fcitx5`. |
 | `Update > Channel` died in its floating terminal, and `Update > Time` did nothing but say "Updating time…" | the `Channel` rows call `omarchy-channel-set`, which rewrites pacman's mirrorlist and sources `install/helpers/pacman.sh` (not vendored) — Arch's mirror selection, nothing this port has. `omarchy-update-time` is the mirror-image mistake: `systemctl restart systemd-timesyncd` works here unchanged, but the `omarchy-update*` glob that drops the update machinery took it too, and hid its row. | `omarchy-channel-*` added to `EXCLUDE` (the rows hide with it, and `omarchy-channel-current` had no other reader); `KEEP` names `omarchy-update-time`, which `arch_only()` — the one predicate behind both the PATH farm and the row generator — honours. |
 
 **Verified on the eMMC install, not inferred:**
@@ -217,6 +220,11 @@ check in `scripts/check-system.sh`.
 - **`check-system.sh`** on the eMMC install: **72 OK, 2 WARN, 0 FAIL**
   (`reports/2026-10-19-emmc-desktop.txt`; the WARNs are the `sbs-8-000b`
   fuel-gauge noise and no suspend recorded in that boot).
+- **`scripts/verify-rootfs.sh`** on the rebuilt rootfs (`4bd56ce`, off-device):
+  **52 OK, 2 WARN, 0 FAIL** — among them the 1347 overlay files with the modes
+  `files/` ships, `ttfx`, the PAM service, the generated menu extension and its
+  hidden rows, the `/usr/bin` subset and every declared package. `make-image.sh`
+  and `write-sd.sh` run it before they touch a disk.
 
 **Left as-is, with the reason:**
 
@@ -371,7 +379,7 @@ was missing several binaries and install steps the desktop assumes.
 | The dock pinned `omacalc`/`omawrite` (nothing) | n/a — the pins assume `omarchy-pkgs` | `setup.sh` prunes a default dock pin with no `.desktop` anywhere. |
 | Omarchy's own apps (X, YouTube, the Google web apps, Discord, Zoom, …) were invisible to the launcher | the packaging step installs `applications/*.desktop` → `/usr/share/applications` and `applications/icons/*` → the icon theme | `setup.sh` installs both, normalising the icon names (`Google Maps.png` → `google-maps.png`, which is what `Icon=` asks for) and refreshing the caches. |
 | X11-only programs (emulators, Wine, some Java/Steam games) had no server | `xorg-xwayland`, pulled by the `hyprland` package | Hyprland enables its built-in Xwayland by default, but Debian's `hyprland` does not depend on the server binary. `xwayland` added to `packages.list`; `check-system.sh` warns when `/usr/bin/Xwayland` is missing. |
-| Choosing a menu installer row opened a terminal that died on `command not found` | the Arch-only commands the row calls were shipped | `setup.sh` generates `~/.config/omarchy/extensions/omarchy-menu.jsonc` hiding every row whose `action` calls an excluded command (see *Package-manager and installer tooling*). |
+| Choosing a menu installer row opened a terminal that died on pacman | the Arch-only commands the row calls were shipped | `setup.sh` generates `~/.config/omarchy/extensions/omarchy-menu.jsonc` hiding every row whose `action` calls an excluded command (see *Package-manager and installer tooling*). |
 
 **Deliberately NOT installed:** upstream's
 `default/fontconfig/conf.avail/50-omarchy.conf`. It assumes the Nerd Font family
@@ -385,11 +393,24 @@ is missing.
 
 **Found, left as-is (with the reason):**
 
-- `omarchy-provision-first-run` runs from Hyprland's autostart but is **excluded**
-  (the `omarchy-provision-*`/`omarchy-install-*` families): it depends on the
-  un-vendored `install/` tree, so each login logs one `command not found`, and
-  the user-unit/GNOME/speaker first-run steps it would run do not happen. The
-  GTK/GNOME end state is nevertheless correct — `omarchy-theme-set` runs
+- `omarchy-provision-first-run` is **excluded** (with the
+  `omarchy-provision-*`/`omarchy-install-*` families) but still *runs* on every
+  login: Hyprland prepends `$OMARCHY_PATH/bin` to the session PATH, so the
+  autostart entry resolves. Its steps are
+  `bash $OMARCHY_PATH/install/user/first-run/*.sh`, and `install/` is not
+  vendored, so each login appends one attempt to
+  `~/.local/state/omarchy/first-run.log` — the fingerprint/agent hook steps exit
+  1, the user-unit, GNOME, GTK-paste, speaker and notification steps exit 127 —
+  and the first-run marker is never written, so it retries on the next login
+  (three attempts so far, one per boot). The `omarchy-provision-user` it calls
+  first stops at `source $OMARCHY_INSTALL/user/all.sh` for the same reason, so
+  *its* `finalize-user` marker never appears either: the steps above that line
+  (the agent-skill symlinks, the xdg user directories, the GTK bookmarks) run once
+  per login, and every one of them is idempotent. None of this reaches the journal
+  or the screen. It is the clearest case of
+  the session-PATH rule above: the farm keeps the entry off a login shell, the
+  desktop still starts it. The GTK/GNOME end state is nevertheless correct —
+  `omarchy-theme-set` runs
   `omarchy-theme-set-gnome`, and `Adwaita-dark` with `Yaru-magenta` is exactly
   Tokyo Night's intent.
 - The shell's menu no longer lists the deferred installers: `setup.sh` hides

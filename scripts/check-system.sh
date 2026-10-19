@@ -621,8 +621,9 @@ section "Omarchy"
 	# one omarchy-update* command that works here unchanged (it only restarts
 	# systemd-timesyncd, the NTP client packages/base.list adds on purpose), so it
 	# sits in KEEP and the Update > Time row stays visible. Test the /usr/bin link
-	# the build owns, not `command -v`: a session PATH that happens to carry
-	# /usr/share/omarchy/bin (a stale dev-link export) answers yes for everything.
+	# the build owns, not `command -v`: Hyprland prepends $OMARCHY_PATH/bin to the
+	# session PATH (default/hypr/envs.lua), so every vendored command resolves in
+	# the session whether or not it has a link.
 	_archonly=""
 	for _c in omarchy-channel-current omarchy-channel-set; do
 		[ -e "/usr/bin/$_c" ] && _archonly="$_archonly $_c"

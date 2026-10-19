@@ -8,16 +8,17 @@ It is a handover note, not documentation: delete it once v0.2.0 is published.
 
 | piece | state |
 |---|---|
-| `HEAD` | `5bf3aa0` when this was written; the tree is now at `389d321` (see the update below), working tree clean |
-| Kernel | built and staged: `7.2.7-mt81`, mainline 7.2.7 + patches, `make LLVM=1 -j3` (95 min) |
-| Rootfs | built: Debian `forky/arm64` + the Omarchy v4 desktop, **4607 MiB**, its `/etc/debian-aarch64-revision` says `commit fd3de8c` |
-| Image | **complete**: `google-asurada.img`, 6144 MiB, kpart already written into `p1` |
+| `HEAD` | `4bd56ce` (the audit's second round: the `Update` menu, in both directions), working tree clean |
+| Kernel | **gone with the old build root**: `build-kernel.sh` was restarted by the audit session (`7.2.7-mt81`, mainline 7.2.7 + patches, `make LLVM=1`, ~95 min) |
+| Rootfs | rebuilt at `4bd56ce`: Debian `forky/arm64` + the Omarchy v4 desktop, **4550 MiB**, `omasnap` installed, verified off-device (52 OK / 2 WARN / 0 FAIL, `scripts/verify-rootfs.sh`) |
+| Image | **not built** for this tree. The finished `google-asurada.img` of the previous build went with `/deboma-build` (see below) |
 | Release assets | **missing**: `.img.xz`, `-rootfs.tar.zst`, the standalone `.vmlinuz.kpart` and `SHA256SUMS` — `make-release.sh` was canceled at `2/4 Compressing the image` |
-| On-device report | **not taken yet** for this rebuild. The release notes still cite the *first* boot of the earlier card (`reports/2026-10-18-omarchy-desktop.txt`, `commit 85d32fc`, 49 OK / 2 WARN / 1 FAIL) |
+| On-device report | `reports/2026-10-19-emmc-desktop.txt` — **72 OK, 2 WARN, 0 FAIL** on the eMMC install, taken after the audit's fixes were applied to it by hand |
 
-The image is self-consistent and bootable as it is: the kpart inside `p1` embeds that image's own
-`root=UUID`. The `.vmlinuz.kpart` lying in `work/` is from the *earlier* attempt and belongs to a
-different root UUID — do not publish it.
+Neither the image nor the stray `.vmlinuz.kpart` of the earlier attempt is on this machine any more:
+both lived in `/deboma-build`, and every *published* artifact still has to be built (see *Then:
+finish the release*). What the previous build proved — that this port boots, on this hardware, with
+these fixes — stands, and `reports/` carries it.
 
 ## Update — 2026-10-19, from the internal install
 
@@ -25,9 +26,9 @@ The eMMC install was audited against the Omarchy manual and what it found is fix
 (`389d321`, "Audit the installed desktop and fix the four silent failures it found"). What that
 means for the build below:
 
-- **The image already in `/deboma-build/work` is behind the tree.** Write the card with
-  `scripts/write-sd.sh` (it takes the current rootfs), or re-run `build-rootfs.sh` +
-  `install-kernel.sh` before `make-release.sh`, as in § *Then: finish the release*.
+- **There is no image any more** (the one in `/deboma-build/work` went with the build root, § below),
+  and no kernel stage either. The rootfs, on the other hand, is rebuilt and current: write the card
+  with `scripts/write-sd.sh` once a kernel is staged, or run the whole of § *Then: finish the release*.
 - `scripts/build.sh` now also runs **`build-omasnap.sh` + `install-omasnap.sh`** (the capture
   overlay, built from the tag in `uis/omarchy/omasnap.version`). That needs the Qt6 build deps
   `scripts/00-deps.sh` installs and adds ~6 minutes before the rootfs step.
@@ -46,31 +47,40 @@ means for the build below:
   checks, not the image. The clean-rebuild report of § *Then: close F7* is still what the release
   needs. `docs/releases/v0.2.0.md` now carries the audit; if these fixes should ship as `v0.2.1`
   instead, that paragraph moves with them.
+- **`scripts/verify-rootfs.sh` is new**: the build-host counterpart of `check-system.sh`, and
+  `make-image.sh` / `write-sd.sh` now run it before they touch a disk. It asserts that the tree is
+  *complete* — the mount points `run-init` needs, the overlay files with the modes `uis/<ui>/files`
+  ships, the `omarchy-*` PATH subset, the generated menu extension, the staged kernel and `omasnap`,
+  every declared package against the rootfs's own `dpkg` status, and the built commit (a WARN when it
+  is not `HEAD`). `VERIFY=no` skips it. On the rootfs rebuilt at `4bd56ce` it reports **52 OK,
+  2 WARN, 0 FAIL** — the WARNs being the kernel that is not staged yet and this note's uncommitted
+  changes.
 - The touchpad override below is unchanged: it is still a personal file on this machine and still
   deliberately not in the repository.
 
 ## Where it lives
 
-The build root is on the eMMC, which is why the internal install is the right place to continue.
+**`/deboma-build` is gone, and that is worth knowing.** The previous build kept its rootfs, kernel
+stage and finished 6144 MiB image there — on the eMMC — and `install-emmc.sh` deleted them:
+that script rsyncs the *running* system onto `/dev/mmcblk0p3` with **`--delete`**, so anything the
+card did not itself carry went with the rest. Keeping the build root on a disk that will later be
+installed *over* is the way to lose it.
 
-| | from the microSD (now) | from the internal disk |
-|---|---|---|
-| build root | `/mnt/emmc/deboma-build` | `/deboma-build` |
-| rootfs | `…/work/rootfs-google-asurada` | `/deboma-build/work/rootfs-google-asurada` |
-| kernel stage | `…/work/kernel-stage-mediatek-mt81` | `/deboma-build/work/kernel-stage-mediatek-mt81` |
-| image | `…/work/release-google-asurada/google-asurada.img` | `/deboma-build/work/release-google-asurada/…` |
-| build logs | `~/.cache/deboma-buildlogs/*.log` (microSD only) | — |
-| checkout | `~/Dev/Deboma` | `~/Dev/Deboma` (staged: `5bf3aa0`) |
-| one-shot runner | `~/.cache/run-deboma-build.sh` | `~/.cache/run-deboma-build.sh` (staged, `BUILD_ROOT=/deboma-build`) |
+What is in use now is the default build root, on this machine's eMMC:
 
-**Every script needs `BUILD_ROOT=/deboma-build` when run from the internal install**, because the
-build root is not at the default `$HOME/.cache/debian-aarch64`. The scripts forward that variable
-through their own `sudo` re-exec (fix in `5bf3aa0`), so it works as an environment variable — do
-**not** point the default path at the eMMC with a symlink: forky's `rsync` 3.5.1 runs as root and
-refuses to follow a symlink owned by another user, which is what killed the first two release runs.
+| | where |
+|---|---|
+| build root | `~/.cache/debian-aarch64` (the default; move it with `BUILD_ROOT=<path>`) |
+| rootfs | `…/work/rootfs-google-asurada` — rebuilt at `4bd56ce`, `omasnap` installed |
+| kernel stage | `…/work/kernel-stage-mediatek-mt81` — being rebuilt by the audit session |
+| image | `…/work/release-google-asurada/…` — not built for this tree |
+| checkout | `~/Dev/Deboma`, the audit's commits on `main` and pushed |
 
-The old `~/.cache/omarchybook` (7.2 GB) and `~/.cache/debian-aarch64` (13 GB) trees on the eMMC are
-stale build products from earlier work; deleting them frees ~20 GB if space gets tight.
+**Every script needs `BUILD_ROOT=<path>` only when the build root is not the default**, and it
+forwards that variable through its own `sudo` re-exec (fix in `5bf3aa0`), so it works as an
+environment variable — do **not** point the default path at another disk with a symlink: forky's
+`rsync` 3.5.1 runs as root and refuses to follow a symlink owned by another user, which is what
+killed the first two release runs.
 
 ## Three things that broke, and are fixed in `5bf3aa0` / `fd3de8c`
 
@@ -90,19 +100,28 @@ The internal install has every tool needed (`cgpt`, `futility`, `depthchargectl`
 `zstd` — verified). The microSD **cannot** write itself: `write-sd.sh` refuses the running root
 device, which is exactly the card it would be writing.
 
-Two ways, and they are independent:
+Nothing is ready to write yet, because the kernel stage went with `/deboma-build`:
+
+```sh
+scripts/build-kernel.sh            # ~95 min: downloads 7.2.7, patches it, builds it
+scripts/install-kernel.sh          # staged kernel -> the rebuilt rootfs, depmod, initramfs
+scripts/verify-rootfs.sh           # what write-sd.sh / make-image.sh check first
+```
+
+Then two ways, independent of each other:
 
 1. **Card straight from the built rootfs** (no release needed, ~few minutes):
    ```sh
-   BUILD_ROOT=/deboma-build scripts/write-sd.sh /dev/mmcblk1
+   scripts/write-sd.sh /dev/mmcblk1
    ```
-   It partitions the card (p1 kernel 128 MiB / p2 `/boot` ext2 512 MiB / p3 root), copies the rootfs,
-   writes `/etc/fstab`, builds and signs a kpart for **that** card's `root=UUID`, and refuses
-   `mmcblk0` (the internal disk) and the running root. The card is 14.8 GB, so p3 takes the whole
-   card; the 6 GiB image below would leave the rest unused.
+   It verifies the rootfs, partitions the card (p1 kernel 128 MiB / p2 `/boot` ext2 512 MiB / p3
+   root), copies the rootfs, writes `/etc/fstab`, builds and signs a kpart for **that** card's
+   `root=UUID`, and refuses `mmcblk0` (the internal disk) and the running root. The card is 14.8 GB,
+   so p3 takes the whole card; the 6 GiB image below would leave the rest unused.
 2. **Card from the release image**, which needs the rest of the release first (§ next):
    ```sh
-   xz -dc /deboma-build/work/release-google-asurada/google-asurada.img.xz |
+   scripts/make-release.sh            # -> $WORK_DIR/release-google-asurada/
+   xz -dc ~/.cache/debian-aarch64/work/release-google-asurada/google-asurada.img.xz |
        sudo dd of=/dev/mmcblk1 bs=4M conv=fsync
    ```
 
@@ -112,15 +131,18 @@ Boot it from the firmware's developer-mode menu: **internal disk = eMMC, externa
 
 ```sh
 cd ~/Dev/Deboma
-BUILD_ROOT=/deboma-build scripts/make-release.sh      # rebuilds the image, xz -T0 -6, tar zstd -T0 -12
+scripts/build-kernel.sh                               # ~95 min, only if it is not staged yet
+scripts/install-kernel.sh                             # staged kernel -> $ROOTFS
+scripts/make-release.sh                               # image, xz -T0 -6, tar zstd -T0 -12
 ```
-- ~25 min, and it regenerates the image (fresh filesystem UUIDs), so the `.img`, its `.xz` and the
-  published `.vmlinuz.kpart` all end up matching each other.
-- Needs ~9 GB more than the tree already uses; the eMMC has ~19 GB free.
-- Optional: re-run `scripts/build-rootfs.sh` (7 min) before it, so the repo snapshot *inside* the
-  image carries `5bf3aa0` instead of `fd3de8c` and `/etc/debian-aarch64-revision` matches the tag.
-  It rebuilds the rootfs from scratch, so `install-kernel.sh` has to run again afterwards.
-- Full pipeline in one go (only if the kernel is to be rebuilt too, ~1.5 h): `~/.cache/run-deboma-build.sh`.
+- `make-release.sh` verifies the rootfs first (`scripts/verify-rootfs.sh`) and refuses to publish a
+  tree that does not verify; ~25 min, and it regenerates the image (fresh filesystem UUIDs), so the
+  `.img`, its `.xz` and the published `.vmlinuz.kpart` all end up matching each other.
+- Needs ~9 GB more than the tree already uses; the eMMC has ~44 GB free.
+- The rootfs for this tree is already rebuilt at `4bd56ce` (with `omasnap` in it), so the optional
+  `build-rootfs.sh` step is done — but it rebuilds from scratch, so if you run it again,
+  `install-kernel.sh` and `install-omasnap.sh` have to follow it.
+- Full pipeline in one go: `scripts/build.sh` (kernel + omasnap + rootfs + kernel + omasnap + kpart).
 
 ## Then: close F7
 
@@ -132,13 +154,17 @@ BUILD_ROOT=/deboma-build scripts/make-release.sh      # rebuilds the image, xz -
    section currently describes the *patched* card, not this rebuild).
 3. Flip the release pointer (`- **Release:** [`v0.1.1`] …`) to `v0.2.0` in `README.md`.
 4. Tag: annotated tag `v0.2.0` whose message is `docs/releases/v0.2.0.md`, then publish the four
-   assets + `SHA256SUMS` from `/deboma-build/work/release-google-asurada/`.
+   assets + `SHA256SUMS` from `$WORK_DIR/release-google-asurada/`
+   (`~/.cache/debian-aarch64/work/release-google-asurada/` by default).
 
 ## Not part of this build (do not mistake for a regression)
 
 - **Touchpad scrolling is inverted** on the microSD card only: `~/.config/hypr/input.lua` sets
   `natural_scroll = true`. It is a personal override and is deliberately **not** in the repository,
   so a freshly written card keeps Omarchy's default.
-- `omarchy-provision-first-run` logs one `command not found` per login (its autostart entry is
-  excluded by design), `Owe.LockFeed` is deferred with the `omarchy-pkgs` set, and stock Quickshell
-  0.3.2 logs `Unrecognized pragma "OmarchyLoadPatch"`. All documented in the release notes.
+- `omarchy-provision-first-run` retries its first-run steps on every login (its autostart entry is
+  excluded by design, but Hyprland prepends `$OMARCHY_PATH/bin` to the session `PATH`, so the call
+  resolves anyway), leaving one failed step per line in
+  `~/.local/state/omarchy/first-run.log`; `Owe.LockFeed` is deferred with the `omarchy-pkgs` set, and
+  stock Quickshell 0.3.2 logs `Unrecognized pragma "OmarchyLoadPatch"`. All documented in the
+  release notes.

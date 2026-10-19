@@ -26,6 +26,12 @@
 #   * the copy is sanitized (scripts/lib-dist.sh) and asserted clean, because
 #     the build rootfs deliberately knows the maintainer's Wi-Fi networks.
 #
+# The rootfs is verified first (scripts/verify-rootfs.sh), and the image is not
+# built from a tree that does not verify: this is the step whose output gets
+# published and flashed, where a package that never installed or a kernel that
+# was never staged is invisible until the card is in the machine. VERIFY=no
+# skips it.
+#
 # A card larger than the image keeps the unused space: growing the root
 # partition is `cgpt add -i 3 -s <sectors>` plus a resize2fs, documented in the
 # release notes. This script does not do it, because it does not know the card.
@@ -39,6 +45,14 @@ SIZE_MIB="${2:-${IMAGE_SIZE_MIB:-6144}}"
 KPART_IMG="$WORK_DIR/kpart-image-$DEVICE.img"
 
 if [ "$(id -u)" -ne 0 ]; then
+	# The tree is verified *before* anything is written, and as the invoking user
+	# so git can read the checkout. The failures this catches are silent: a
+	# package list that moved after the rootfs was built, a kernel that was never
+	# installed, an overlay file that did not arrive. VERIFY=no skips it.
+	if [ "${VERIFY:-yes}" != no ]; then
+		"$REPO_DIR/scripts/verify-rootfs.sh" "$ROOTFS" ||
+			die "the rootfs did not verify: fix what the report lists above"
+	fi
 	# Forward every resolved build input: sudo does not preserve the caller's
 	# environment, so a build root outside $HOME (e.g. moved to a bigger disk)
 	# would be dropped here and replaced by the default.

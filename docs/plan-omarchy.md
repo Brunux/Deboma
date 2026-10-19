@@ -242,8 +242,11 @@ port builds it from its own upstream repository at a pinned tag (`scripts/build-
 - Which exact subset of `bin/` ships, and how the omitted commands fail (clean "not available" vs
   broken call). **Answered:** the `EXCLUDE` globs in `uis/omarchy/setup.sh` decide it (Arch package
   management, the installer/AUR/web-app/gaming/AI families, the helpers that call `pacman`/`yay` or
-  Debian-less systemd units); the commands are left off `PATH`, and the command menu hides the rows
-  whose action calls one of them, so the omitted set fails as "not in the menu" rather than broken.
+  Debian-less systemd units); the commands get no `/usr/bin` link, so a login shell does not find
+  them, and the command menu hides the rows whose action calls one of them, so the omitted set fails
+  as "not in the menu" rather than broken. (Inside the session Hyprland prepends `$OMARCHY_PATH/bin`
+  to `PATH`, upstream's `default/hypr/envs.lua`, so a command reached from the desktop still resolves
+  and dies on what it reaches for; the hiding, not the `PATH`, is what keeps the feature unoffered.)
 - Whether `greetd` + `tuigreet` is enough to pick the Hyprland/UWSM session, or a small
   `greetd`/session tweak is needed. **Answered:** enough — Debian's `greetd` wants the user
   `_greetd` and `vt = 7`, and the port ships that `config.toml`; the first boot landed on Hyprland.

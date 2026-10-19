@@ -8,6 +8,10 @@
 #   p3  root    the rest Debian root filesystem
 #
 # Usage: write-sd.sh [DEVICE]     (default: /dev/mmcblk1)
+#
+# The rootfs is verified first (scripts/verify-rootfs.sh): a card written from a
+# tree that does not verify - a package list that moved after the build, a kernel
+# that was never installed - costs a reboot to find out. VERIFY=no skips it.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 . "$(dirname "$0")/lib-cgpt.sh"
@@ -15,6 +19,15 @@ set -euo pipefail
 BLOCK="${1:-/dev/mmcblk1}"
 
 if [ "$(id -u)" -ne 0 ]; then
+	# The tree is verified *before* the card is touched, and as the invoking user
+	# so git can read the checkout: the failures this catches are silent (a
+	# package list that moved after the rootfs was built, a kernel that was never
+	# installed, an overlay file that did not arrive) and a card costs a reboot
+	# each. VERIFY=no skips it.
+	if [ "${VERIFY:-yes}" != no ]; then
+		"$REPO_DIR/scripts/verify-rootfs.sh" "$ROOTFS" ||
+			die "the rootfs did not verify: fix what the report lists above"
+	fi
 	# Forward every resolved build input: sudo does not preserve the caller's
 	# environment, so a ROOTFS to write instead of the built one, a build root
 	# outside $HOME, or a different boot partition size would be dropped here.

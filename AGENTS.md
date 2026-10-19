@@ -416,13 +416,28 @@ uncommitted changes, since those do not travel into the image.
   is `omarchy-channel-*`: the `Update > Channel` rows called `omarchy-channel-set`, which rewrites
   pacman's mirrorlist and sources `install/helpers/pacman.sh` (not vendored), so the rows died in a
   floating terminal while the command stayed on PATH. Both directions are checks in
-  `check-system.sh`, which reads the `/usr/bin` link — **not** `command -v`, because a session PATH
-  that carries `/usr/share/omarchy/bin` (a stale dev-link export) answers yes for every command.
+  `check-system.sh`, which reads the `/usr/bin` link — **not** `command -v`: Hyprland prepends
+  `$OMARCHY_PATH/bin` to the session PATH itself (`default/hypr/envs.lua`), so inside the session
+  every vendored command resolves whether or not it has a link, and only a login shell (`bash -lc`)
+  sees the farm alone.
 - **The symlink farm is pruned, not just grown**: `setup.sh` removes `/usr/bin/omarchy-*` links that
   point into `$OMARCHY_PATH/bin` and match the current `EXCLUDE`/`KEEP`. Without it, adding a pattern
   later left the command reachable forever (the farm only ever added), which is exactly how the
   `Channel` rows above came to be audited with the command still on PATH. Checking the *link* rather
   than a name is what makes the regression check honest.
+- **`$OMARCHY_PATH/bin` is on the *session* PATH, and that is upstream's own doing**:
+  `default/hypr/envs.lua` prepends it, so an excluded command still **runs** when the desktop reaches
+  it (the floating terminal included — `xdg-terminal-exec -e bash -c`, which inherits the session
+  environment) and dies on what it reaches for — `pacman`, LocalSend, the un-vendored `install/`
+  tree — not on its own name. `omarchy-provision-first-run` retries its first-run steps at every
+  login for exactly this reason, appending one attempt per boot to
+  `~/.local/state/omarchy/first-run.log` (the hook steps exit 1, the user-unit/GNOME/GTK/speaker
+  steps 127) and never marking the flag; the `omarchy-provision-user` it calls first stops the same
+  way at `source $OMARCHY_INSTALL/user/all.sh`, so that marker is never written either and its
+  idempotent prefix (agent-skill symlinks, xdg user dirs, GTK bookmarks) re-runs each login. Nothing
+  of it reaches the journal or the screen. What the
+  farm decides is what a *login* shell (SSH, a TTY) sees; what keeps the desktop from *offering* the
+  feature is the generated row hiding.
 
 ### ChromeOS GPT (`cgpt`)
 
@@ -560,6 +575,9 @@ scripts/restore-system.sh   # put such a backup back onto a disk (root only, fro
 scripts/wifi.sh export      # saved NetworkManager Wi-Fi profiles -> $WIFI_DIR
 scripts/wifi.sh import      # $WIFI_DIR -> a rootfs (drops interface-name=)
 scripts/check-system.sh     # (on the booted image) hardware + configuration report
+scripts/verify-rootfs.sh    # (on the build host) is the built rootfs complete?
+                            #   runs before make-image.sh / write-sd.sh and
+                            #   refuses a tree that does not verify (VERIFY=no)
 
 scripts/build.sh            # full pipeline (kernel + omasnap + rootfs + kernel + omasnap + kpart)
 ```
@@ -683,6 +701,18 @@ there is a regression, not a hypothetical. It also has to be *right* about the s
 that D-Bus starts on demand and lets exit again, so what it now requires is that the daemon is
 activatable. It
 exits non-zero when something FAILs.
+
+`verify-rootfs.sh` is the other half of that pair, on the *build host*: it takes `$ROOTFS` (or an
+argument) and asserts that the tree a card would be written from is **complete** before anything
+touches a disk — the mount points `run-init` needs, the overlay files with the modes `uis/<ui>/files`
+ships, the commands `setup.sh` puts on PATH (`/usr/bin/omarchy-*` links pointing into
+`$OMARCHY_PATH`), the generated menu extension, the staged kernel and omasnap, every declared
+package against the rootfs's own `dpkg` status, and the revision (a WARN when the tree was not built
+from `HEAD`). It reads the lists from the repository copy *the image ships*, not from the checkout,
+needs no root and changes nothing. `make-image.sh` and `write-sd.sh` run it first and refuse a tree
+that does not verify (`VERIFY=no` skips it), because "the rootfs is one commit or one `apt install`
+behind" is this port's most repeated mistake and the one that costs a flash to discover. What it
+cannot check is the reason `check-system.sh` exists: the firmware, the drivers and the boot chain.
 
 ### Boot from microSD
 
