@@ -34,11 +34,14 @@ means for the build below:
 - `check-system.sh` gained one check per finding (the screensaver renderer and its seeded art, the
   lock screen's PAM file and the running shell's `passwordPam`, `omasnap`, the shell-environment
   helpers, `xkbcli` and `~/.bashrc` sourcing Omarchy's rc), so the rebuild's report has **nine more
-  OKs** than the counts quoted elsewhere in this file. The same run also caught a check that was
+  OKs** than the counts quoted elsewhere in this file. A second round against the command menu added
+  three more — the generated row-hiding extension is in place, the `Update > Channel` commands are off
+  PATH, and `omarchy-update-time` is on it — so the count under `reports/` is twelve over the first
+  report. The same run also caught a check that was
   wrong about itself rather than about the port: `polkitd is active` was a FAIL on an idle desktop,
   because `polkit.service` is static and D-Bus starts it on demand, so it now requires that the
   daemon is activatable.
-- `reports/2026-10-19-emmc-desktop.txt` is the audit's report — **69 OK, 2 WARN, 0 FAIL** — taken on
+- `reports/2026-10-19-emmc-desktop.txt` is the audit's report — **72 OK, 2 WARN, 0 FAIL** — taken on
   the eMMC install *after* the fixes were applied by hand, so it documents the hardware and the new
   checks, not the image. The clean-rebuild report of § *Then: close F7* is still what the release
   needs. `docs/releases/v0.2.0.md` now carries the audit; if these fixes should ship as `v0.2.1`

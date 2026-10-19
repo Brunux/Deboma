@@ -1,4 +1,4 @@
-debian-aarch64 system report  2026-10-19 00:48:30 CST
+debian-aarch64 system report  2026-10-19 01:07:15 CST
   ----  UI: omarchy
 
 ==> Boot
@@ -83,7 +83,10 @@ debian-aarch64 system report  2026-10-19 00:48:30 CST
   OK    greetd starts the Omarchy session (omarchy-session)
   OK    ~/.config/hypr/hyprland.lua is present
   OK    current theme: tokyo-night
-  OK    314 omarchy-* command(s) on PATH
+  OK    313 omarchy-* command(s) on PATH
+  OK    the menu extension is in place (~/.config/omarchy/extensions/omarchy-menu.jsonc)
+  OK    the Update > Channel commands are off PATH (their rows die on pacman)
+  OK    omarchy-update-time is on PATH: the Update > Time row resyncs the clock
   OK    awk keeps line terminators (gawk RT): the theme templates render multiline
   OK    the generated theme files keep their line breaks
   OK    JetBrainsMono Nerd Font resolves to a monospace face (JetBrains Mono)
@@ -119,4 +122,4 @@ debian-aarch64 system report  2026-10-19 00:48:30 CST
           Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
           Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
 
-==> Summary  69 OK, 2 WARN, 0 FAIL
+==> Summary  72 OK, 2 WARN, 0 FAIL

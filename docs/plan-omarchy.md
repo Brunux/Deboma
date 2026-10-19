@@ -109,7 +109,7 @@ column; this table is the justification, to be kept in `uis/omarchy/README.md`.
 | hyprland-preview-share-picker | `hyprland-qtutils` (picker ships with the Qt utils) |
 | chromium | `chromium` 154 |
 | foot, kitty, alacritty | `foot` 1.28, `kitty` 0.48, `alacritty` 0.17 |
-| nvim / omarchy-nvim | `neovim` 0.12 (+ vendored Omarchy nvim config) |
+| nvim / omarchy-nvim | `neovim` 0.12 — the package is installed and `SUPER + SHIFT + N` / the `n` alias launch it, but the **LazyVim configuration** that Arch's `omarchy-nvim` package ships is not: it lives in that package, not in the Omarchy tree this port vendors, so nvim comes up with its own defaults (deferred, see §4 and `uis/omarchy/README.md`) |
 | starship, zoxide, eza, bat, fd, ripgrep, fzf, lazygit, btop, fastfetch, jq, less, tmux, gum, man-db, tree-sitter-cli, unzip, vim, whois, inxi, plocate, inotify-tools, socat | same names |
 | networkmanager | `network-manager` |
 | bluez, bluez-tools, bolt, avahi | `bluez`, `bluez-tools`, `bolt`, `avahi-daemon` |
@@ -152,6 +152,7 @@ column; this table is the justification, to be kept in `uis/omarchy/README.md`.
 | localsend, moonray-qt, obsidian, pinta, gpu-screen-recorder, wl-screenrec | drop for the first milestone |
 | pacman, yay, pacman-contrib, expac, kernel-modules-hook, initramfs/mkinitcpio hooks, limine, plymouth packages | drop — Debian's own package manager, `initramfs-tools` and this repo's kernel partition flow replace them |
 | omacalc, omacut, omawrite, owe, owe-lockfeed, herdr, hype, aether, gliff, monologue, signed, tobi-try, usage, cliamp, disktree-bin | **deferred** — `omarchy-pkgs` applications, out of scope for the first milestone (Phase 8). `omasnap`, listed here originally, is **built from source** instead: the capture key `exec`s it and no Debian package provides it (`scripts/build-omasnap.sh`, pin in `uis/omarchy/omasnap.version`) |
+| omarchy-nvim (the LazyVim configuration) | drop for now — it is a package of its own in the Arch repo, not part of the tree this port vendors, so `neovim` (mapped in §3) launches with its own defaults. Reproducing it means vendoring a plugin set that fetches from the network on first run, so it is F8 work like the rest |
 
 ### Build from source (only if a core piece needs it)
 

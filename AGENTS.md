@@ -408,6 +408,21 @@ uncommitted changes, since those do not travel into the image.
   and has to be named by id in `HIDE_ROWS`. `trigger.share` is the one that matters: every row
   under it funnels into LocalSend, which Debian does not package, so the whole submenu is hidden
   (a submenu left with no visible row disappears with it).
+- **`arch_only()` is the single definition of "left off PATH"**: `setup.sh` uses it for both the
+  `/usr/bin` symlink farm and the menu-row generator, and it consults `KEEP` before `EXCLUDE`, so a
+  command a glob over-reaches can be named back. That is `omarchy-update-time` — the `omarchy-update*`
+  glob drops the update machinery, but this one is `systemctl restart systemd-timesyncd`, and hiding
+  its row hid the only UI for the NTP client `packages/base.list` adds on purpose. The mirror image
+  is `omarchy-channel-*`: the `Update > Channel` rows called `omarchy-channel-set`, which rewrites
+  pacman's mirrorlist and sources `install/helpers/pacman.sh` (not vendored), so the rows died in a
+  floating terminal while the command stayed on PATH. Both directions are checks in
+  `check-system.sh`, which reads the `/usr/bin` link — **not** `command -v`, because a session PATH
+  that carries `/usr/share/omarchy/bin` (a stale dev-link export) answers yes for every command.
+- **The symlink farm is pruned, not just grown**: `setup.sh` removes `/usr/bin/omarchy-*` links that
+  point into `$OMARCHY_PATH/bin` and match the current `EXCLUDE`/`KEEP`. Without it, adding a pattern
+  later left the command reachable forever (the farm only ever added), which is exactly how the
+  `Channel` rows above came to be audited with the command still on PATH. Checking the *link* rather
+  than a name is what makes the regression check honest.
 
 ### ChromeOS GPT (`cgpt`)
 
@@ -661,7 +676,8 @@ port has already hit — keyd swallowing `KEY_SLEEP`, greetd's `vt`/user, the UC
 missing `default` PCM, the backlight udev rule, the font fallback, `interface-name=` in the Wi-Fi
 profiles, the clock, the `fstab` UUID, the kernel partition holding a signed FIT, the screensaver's
 `ttfx` and its branding file, the lock screen's PAM file (and the running shell's `passwordPam`),
-`omasnap`, the shell-environment helpers, `xkbcli` and `~/.bashrc` sourcing Omarchy's rc — so a FAIL
+`omasnap`, the shell-environment helpers, `xkbcli`, the generated menu extension and both ends of the
+`Update` row audit (`Channel` off PATH, `Time` on it), and `~/.bashrc` sourcing Omarchy's rc — so a FAIL
 there is a regression, not a hypothetical. It also has to be *right* about the state it asserts: the
 `polkitd is active` check was a FAIL on an idle desktop, because `polkit.service` is a static unit
 that D-Bus starts on demand and lets exit again, so what it now requires is that the daemon is

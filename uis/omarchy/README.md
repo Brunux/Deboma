@@ -156,12 +156,21 @@ them. The list is **generated from the pinned menu on every build**, by matching
 each row's `action` against the same `EXCLUDE` globs that decide the PATH, so a
 new upstream row that reaches for an Arch-only command is caught without editing
 the vendored file. What survives is what works here — `Install > Style >
-Theme`/`Background` and the `Update` menu's Channel/Config/Process/Hardware/
-Password/Timezone rows. Verified live on the booted card by summoning the
-submenu (`omarchy-shell shell toggle omarchy.menu '{"menu":"install"}'`) and
-screenshotting it: `Install` went from thirteen rows to one, `Update` kept all
-six, `Install > Style` kept `Theme` and `Background` (its Arch-only `Fonts` row
-is gone).
+Theme`/`Background` and the `Update` menu's Config/Process/Hardware/Password/
+Timezone/**Time** rows. The `Channel` family is Arch's mirror selection:
+`omarchy-channel-set` rewrites pacman's mirrorlist and sources
+`install/helpers/pacman.sh`, a file this port does not vendor, so the row died
+before doing anything — it is out with the rest. The other way round,
+`omarchy-update-time` is the one `omarchy-update*` command that works here
+unchanged (`systemctl restart systemd-timesyncd`, the NTP client
+`packages/base.list` adds on purpose), so it sits in a `KEEP` list that the
+same generated rows honour, and its row stays. Verified live on the booted card
+by summoning the submenu (`omarchy-shell shell toggle omarchy.menu
+'{"menu":"install"}'`) and screenshotting it: `Install` went from thirteen rows
+to one, `Update` kept all six, `Install > Style` kept `Theme` and `Background`
+(its Arch-only `Fonts` row is gone). Re-verified on the eMMC after the second
+audit: `Update` now shows Config/Process/Hardware/Password/Timezone/Time, with
+no `Channel` row.
 
 ### Second audit: the installed eMMC system (2026-10-19)
 
@@ -169,12 +178,12 @@ The card's own install (`scripts/install-emmc.sh`) was audited against the
 Omarchy manual, feature by feature, on the running desktop: the commands, the key
 bindings, the bar panels and the CLI behind each of them. The boot chain, Wi-Fi,
 Bluetooth, audio, suspend, the battery, the theme, the bar, the menus and the
-lock behaved. What did **not** is in the table below — four features that depend
+lock behaved. What did **not** is in the table below — the features that depend
 on something Arch's `omarchy` package installs in a step this port has no
-counterpart for, and two that only asked for a tool Debian packages under
-another name. Each one is silent — the key does nothing, no error is shown —
-which is exactly why every one of them is now a check in
-`scripts/check-system.sh`.
+counterpart for, and the ones that only asked for a tool Debian packages under
+another name or a command a glob had taken with it. Each one is silent — the key
+does nothing, no error is shown — which is exactly why every one of them is now a
+check in `scripts/check-system.sh`.
 
 | Symptom | What it actually was | Fix |
 |---|---|---|
@@ -190,6 +199,7 @@ which is exactly why every one of them is now a check in
 | `omarchy theme list` printed `find: ~/.config/omarchy/themes/: No such file or directory` before its 23 themes | that directory is where a theme of your own goes, and nothing creates it on a fresh v4 install: upstream's `omarchy-upgrade-to-quattro` does it only for systems coming from v3. | `setup.sh` creates it, which is also the chapter 43 workflow's starting point. |
 | The Share menu opened flows that died on `command not found` | every Share row funnels into **LocalSend**, which Debian does not package. | the parent row `trigger.share` is hidden, which takes the submenu with it. A submenu parent has no `action`, so `setup.sh`'s generator now tests the row *id* before it requires an action. |
 | `Setup > Input Methods` died on `command not found` | it calls `omarchy-setup-input`, which installs Fcitx5 through `omarchy-pkg-add`. | excluded with the rest of the Arch installers; the key binding stays and does nothing without `fcitx5`. |
+| `Update > Channel` died in its floating terminal, and `Update > Time` did nothing but say "Updating time…" | the `Channel` rows call `omarchy-channel-set`, which rewrites pacman's mirrorlist and sources `install/helpers/pacman.sh` (not vendored) — Arch's mirror selection, nothing this port has. `omarchy-update-time` is the mirror-image mistake: `systemctl restart systemd-timesyncd` works here unchanged, but the `omarchy-update*` glob that drops the update machinery took it too, and hid its row. | `omarchy-channel-*` added to `EXCLUDE` (the rows hide with it, and `omarchy-channel-current` had no other reader); `KEEP` names `omarchy-update-time`, which `arch_only()` — the one predicate behind both the PATH farm and the row generator — honours. |
 
 **Verified on the eMMC install, not inferred:**
 
@@ -204,7 +214,7 @@ which is exactly why every one of them is now a check in
 - **Screenshots.** `omarchy-capture-screenshot fullscreen copy` puts a
   1366×912 PNG on the clipboard, and the interactive overlay (region picker,
   hint bar, key legend) renders and closes on Escape.
-- **`check-system.sh`** on the eMMC install: **69 OK, 2 WARN, 0 FAIL**
+- **`check-system.sh`** on the eMMC install: **72 OK, 2 WARN, 0 FAIL**
   (`reports/2026-10-19-emmc-desktop.txt`; the WARNs are the `sbs-8-000b`
   fuel-gauge noise and no suspend recorded in that boot).
 
@@ -282,7 +292,11 @@ Debian if a fallback OSD is ever wanted.
 
 Arch/mise-only tooling (`mise-bin`, `superwhisper-bin`), proprietary or
 unpackaged apps (`localsend`, `moonlight-qt`, `obsidian`, `pinta`,
-`wl-screenrec`), `dotnet-runtime`, and the entire `omarchy-pkgs` application set
+`wl-screenrec`), the **LazyVim configuration of Arch's `omarchy-nvim` package**
+(`neovim` is installed and `SUPER + SHIFT + N` / `n` launch it, but it starts
+with its own defaults instead of the setup the manual's chapter 16 describes —
+upstream ships that as a package of its own, not in the tree this port vendors),
+`dotnet-runtime`, and the entire `omarchy-pkgs` application set
 (except `omasnap`, which the capture key needs and which is built from source).
 They are recorded in `docs/plan-omarchy.md` §4 and deferred to F8 rather than
 silently forgotten. `localsend` is the one of them the *menu* reaches: every row
@@ -318,7 +332,7 @@ this UI, on a card written from `commit 85d32fc` (the card's `REVISION` and
 
 The same system was then installed to the internal eMMC
 (`scripts/install-emmc.sh`, from the running card) and audited there:
-`reports/2026-10-19-emmc-desktop.txt` is that report — **69 OK, 2 WARN, 0 FAIL**,
+`reports/2026-10-19-emmc-desktop.txt` is that report — **72 OK, 2 WARN, 0 FAIL**,
 captured with `/` on `/dev/mmcblk0p3` and the kernel partition resolved from the
 `kern_guid` in `/proc/cmdline`.
 

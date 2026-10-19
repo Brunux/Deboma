@@ -33,6 +33,12 @@ EXCLUDE=(
 	'omarchy-pkg-*'
 	'omarchy-install-*'
 	'omarchy-remove-*'
+	# omarchy-channel-set rewrites pacman's mirrorlist and installs the omarchy
+	# packages through pacman; it sources install/helpers/pacman.sh, which this
+	# port does not vendor, so it dies before it does anything. The whole family
+	# goes, and the Update > Channel rows go with it - keeping only "current"
+	# would leave a command nothing reads.
+	'omarchy-channel-*'
 	'omarchy-migrate*'
 	'omarchy-upgrade-to-quattro'
 	'omarchy-reinstall*'
@@ -102,6 +108,31 @@ EXCLUDE=(
 	'omarchy-cliamp'
 )
 
+# The one command a glob above would take that works here unchanged:
+# omarchy-update-time only runs `systemctl restart systemd-timesyncd`, and
+# systemd-timesyncd is the NTP client this port installs on purpose (Debian
+# enables none, packages/base.list). Upstream's Update > Time row is the manual's
+# way to resync a clock that drifted, so the row is left visible with it.
+KEEP=(
+	'omarchy-update-time'
+)
+
+# arch_only <name>: does this build leave the command off PATH? One definition,
+# used by the symlink farm and by the menu-row generator, so an exception cannot
+# drift from the rows it un-hides.
+arch_only() {
+	local _n="$1" _p
+	for _p in "${KEEP[@]}"; do
+		# shellcheck disable=SC2254  # the RHS is meant to be a glob
+		[[ $_n == $_p ]] && return 1
+	done
+	for _p in "${EXCLUDE[@]}"; do
+		# shellcheck disable=SC2254  # the RHS is meant to be a glob
+		[[ $_n == $_p ]] && return 0
+	done
+	return 1
+}
+
 # Menu rows whose action needs something Debian does not package at all, listed
 # by menu id because the EXCLUDE globs above can only match Arch-only commands.
 # Every Share row ends in LocalSend — the clipboard, file and folder rows go
@@ -117,19 +148,30 @@ skipped=0
 for f in "$OMARCHY_PATH"/bin/*; do
 	[ -f "$f" ] || continue
 	n="${f##*/}"
-	skip=0
-	for pat in "${EXCLUDE[@]}"; do
-		# shellcheck disable=SC2254  # the RHS is meant to be a glob
-		if [[ $n == $pat ]]; then skip=1; break; fi
-	done
-	if [ "$skip" = 1 ]; then
+	if arch_only "$n"; then
 		skipped=$((skipped + 1))
 		continue
 	fi
 	ln -sf "$f" "/usr/bin/$n"
 	linked=$((linked + 1))
 done
-log "  $linked command(s) linked, $skipped Arch-only command(s) left out"
+# The farm only adds, so a name a pattern added later covers would keep its link:
+# the command would still be reachable (and its menu row hidden with it). Prune
+# the links this repository owns - they point into $OMARCHY_PATH/bin - and leave
+# a real file, or a link someone placed elsewhere, alone.
+pruned=0
+for l in /usr/bin/omarchy-*; do
+	[ -L "$l" ] || continue
+	case "$(readlink "$l")" in
+		"$OMARCHY_PATH"/bin/*) ;;
+		*) continue ;;
+	esac
+	if arch_only "${l##*/}"; then
+		rm -f "$l"
+		pruned=$((pruned + 1))
+	fi
+done
+log "  $linked command(s) linked, $skipped Arch-only command(s) left out${pruned:+, $pruned stale link(s) removed}"
 
 log "Seeding ~/.config from $OMARCHY_PATH"
 install -d -m 0755 -o "$USERNAME" -g "$USERNAME" "$HOME/.config"
@@ -324,14 +366,10 @@ if [ -f "$_menu" ]; then
 				esac
 				_action=${_line#*\"action\":\"}; _action=${_action%%\"*}
 				# Word-split the action and match every token against the same
-				# globs the PATH exclusion uses, so "needs an Arch-only command"
-				# has one definition.
+				# predicate the PATH exclusion uses, so "needs an Arch-only
+				# command" has one definition (KEEP included).
 				for _tok in $(printf '%s' "$_action" | tr -c 'A-Za-z0-9_.:/-' ' '); do
-					for _pat in "${EXCLUDE[@]}"; do
-						# shellcheck disable=SC2254  # the RHS is meant to be a glob
-						if [[ $_tok == $_pat ]]; then _skip=1; break; fi
-					done
-					[ "$_skip" = 1 ] && break
+					if arch_only "$_tok"; then _skip=1; break; fi
 				done
 			fi
 			[ "$_skip" = 1 ] || continue

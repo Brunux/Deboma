@@ -605,6 +605,36 @@ section "Omarchy"
 	_ncmd="$(find /usr/bin -maxdepth 1 -name 'omarchy-*' 2>/dev/null | wc -l)"
 	[ "$_ncmd" -gt 0 ] && ok "$_ncmd omarchy-* command(s) on PATH" ||
 		fail "no omarchy-* command on PATH: the shell and the key bindings cannot call them"
+	# The generated extension is what hides the menu rows that reach an Arch-only
+	# command; without it the menu offers the whole install/remove surface again
+	# and every click dies with "command not found" in a floating terminal.
+	if [ -s "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc" ]; then
+		ok "the menu extension is in place (~/.config/omarchy/extensions/omarchy-menu.jsonc)"
+	else
+		fail "the menu extension is missing: the Install/Remove/Update rows that cannot work here are visible (uis/omarchy/setup.sh)"
+	fi
+	# Two ends of the same audit. The Update > Channel rows ran
+	# omarchy-channel-set, which rewrites pacman's mirrorlist and sources
+	# install/helpers/pacman.sh - a file this port does not vendor, so the row
+	# died before doing anything; the whole family is off PATH now and the same
+	# EXCLUDE glob hides the rows. The other way round, omarchy-update-time is the
+	# one omarchy-update* command that works here unchanged (it only restarts
+	# systemd-timesyncd, the NTP client packages/base.list adds on purpose), so it
+	# sits in KEEP and the Update > Time row stays visible. Test the /usr/bin link
+	# the build owns, not `command -v`: a session PATH that happens to carry
+	# /usr/share/omarchy/bin (a stale dev-link export) answers yes for everything.
+	_archonly=""
+	for _c in omarchy-channel-current omarchy-channel-set; do
+		[ -e "/usr/bin/$_c" ] && _archonly="$_archonly $_c"
+	done
+	if [ -z "$_archonly" ]; then
+		ok "the Update > Channel commands are off PATH (their rows die on pacman)"
+	else
+		fail "still linked:$_archonly - the Update > Channel rows die on pacman (uis/omarchy/setup.sh EXCLUDE)"
+	fi
+	[ -x /usr/bin/omarchy-update-time ] &&
+		ok "omarchy-update-time is on PATH: the Update > Time row resyncs the clock" ||
+		warn "omarchy-update-time is off PATH: the Update > Time row does nothing (it belongs in KEEP)"
 	# omarchy-theme-set-templates renders every *.tpl with `awk` and preserves the
 	# line breaks with gawk's RT (the record terminator). Debian's default awk is
 	# mawk, where RT is empty, so every generated theme file collapses into one
