@@ -8,9 +8,9 @@ It is a handover note, not documentation: delete it once v0.2.0 is published.
 
 | piece | state |
 |---|---|
-| `HEAD` | `2e3d8be` — the audit's commits plus the two new defaults (natural scrolling, the first-run marker), working tree clean and pushed |
-| Kernel | **gone with the old build root, being rebuilt**: `build-kernel.sh` (`7.2.7-mt81`, mainline 7.2.7 + patches, `make LLVM=1`) reached the `vmlinux` link before a host restart killed it; the objects are in `~/.cache/debian-aarch64/src/linux-7.2.7`, so the rerun only redoes the link, the modules and `zinstall` |
-| Rootfs | rebuilt at `4bd56ce`: Debian `forky/arm64` + the Omarchy v4 desktop, **4550 MiB**, `omasnap` installed, verified off-device (52 OK / 2 WARN / 0 FAIL, `scripts/verify-rootfs.sh`). It ships the repository copy of `4bd56ce`, **five commits behind `HEAD`** and without the two new defaults, so `verify-rootfs.sh` now **FAILs** on it — rebuild it before publishing |
+| `HEAD` | `734e1e5` — the audit's commits, the two new defaults (natural scrolling, the first-run marker) and the handover/report updates that describe them, working tree clean and pushed |
+| Kernel | **staged**: `kernel-stage-mediatek-mt81` (65 MB) — `7.2.7-mt81`, `vmlinuz-7.2.7-mt81`, `System.map`, `config`, the dtbs and the modules. The first attempt died at the `vmlinux` link when the host restarted; the rerun resumed from the objects and finished |
+| Rootfs | **rebuilt at `734e1e5`**: Debian `forky/arm64` + the Omarchy v4 desktop, **4.6 GiB**, kernel `7.2.7-mt81` and `omasnap` installed from their stages, verified off-device: **57 OK, 0 WARN, 0 FAIL** (`scripts/verify-rootfs.sh`), built from `HEAD`. This is the tree a card is written from |
 | Image | **not built** for this tree. The finished `google-asurada.img` of the previous build went with `/deboma-build` (see below) |
 | Release assets | **missing**: `.img.xz`, `-rootfs.tar.zst`, the standalone `.vmlinuz.kpart` and `SHA256SUMS` — `make-release.sh` was canceled at `2/4 Compressing the image` |
 | On-device report | `reports/2026-10-19-emmc-desktop.txt` — **72 OK, 2 WARN, 0 FAIL** on the eMMC install, taken after the audit's fixes were applied to it by hand; it predates the two checks added with `2e3d8be`, which report **74 OK** on the same machine |
@@ -64,6 +64,9 @@ means for the build below:
   `check-system.sh` *and* `verify-rootfs.sh`, so the **rebuilt rootfs** is what has to ship them.
   `omarchy-provision-first-run` now exits in ~10 ms and
   `~/.local/state/omarchy/first-run.log` stops growing at its 57 lines (three boots).
+  The rootfs was then rebuilt from `734e1e5` (kernel and `omasnap` staged into it, verified
+  **57 OK / 0 WARN / 0 FAIL**), so the two new checks run against the shipped tree instead of
+  FAILing on a tree that predates them. What is left is the release itself: image, assets, tag.
 
 ## Where it lives
 
@@ -145,22 +148,18 @@ Boot it from the firmware's developer-mode menu: **internal disk = eMMC, externa
 
 ```sh
 cd ~/Dev/Deboma
-scripts/build-kernel.sh                               # ~95 min; resumes the interrupted link
-scripts/install-kernel.sh                             # staged kernel -> $ROOTFS
-scripts/build-rootfs.sh                               # REQUIRED: the rootfs is 5 commits behind
-scripts/install-kernel.sh                             # (a rebuild is from scratch)
-scripts/install-omasnap.sh                            # (so both staged pieces go back in)
 scripts/make-release.sh                               # image, xz -T0 -6, tar zstd -T0 -12
 ```
+The kernel, the rootfs, `omasnap` and the verification of `734e1e5` are all done; nothing above has
+to be rebuilt first. (If you do rebuild the rootfs, `install-kernel.sh` and `install-omasnap.sh`
+have to follow it — a rebuild is from scratch.)
 - `make-release.sh` verifies the rootfs first (`scripts/verify-rootfs.sh`) and refuses to publish a
   tree that does not verify; ~25 min, and it regenerates the image (fresh filesystem UUIDs), so the
   `.img`, its `.xz` and the published `.vmlinuz.kpart` all end up matching each other.
 - Needs ~9 GB more than the tree already uses; the eMMC has ~44 GB free.
-- The rootfs for this tree is **behind**: it was rebuilt at `4bd56ce` (with `omasnap` in it) and
-  `HEAD` is five commits further (`2e3d8be`), so `build-rootfs.sh` has to run again before
-  `make-release.sh` will verify — the new checks (natural scrolling, the first-run marker) FAIL on
-  the old tree, which is the point of them. A rebuild is from scratch, so `install-kernel.sh` and
-  `install-omasnap.sh` follow it.
+- The rootfs is the tree this release publishes: built from `734e1e5`, kernel and `omasnap` in it,
+  and `verify-rootfs.sh` reports **57 OK, 0 WARN, 0 FAIL**. `make-release.sh` re-runs that check
+  before it touches anything and refuses a tree that does not verify.
 - Full pipeline in one go: `scripts/build.sh` (kernel + omasnap + rootfs + kernel + omasnap + kpart).
 
 ## Then: close F7
