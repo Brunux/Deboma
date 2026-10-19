@@ -96,17 +96,24 @@ killed the first two release runs.
 
 ## Continue here: write the new card
 
-The internal install has every tool needed (`cgpt`, `futility`, `depthchargectl`, `rsync`, `xz`,
+The internal install has every *device* tool (`cgpt`, `futility`, `depthchargectl`, `rsync`, `xz`,
 `zstd` — verified). The microSD **cannot** write itself: `write-sd.sh` refuses the running root
 device, which is exactly the card it would be writing.
 
 Nothing is ready to write yet, because the kernel stage went with `/deboma-build`:
 
 ```sh
+scripts/00-deps.sh                 # the *build* toolchain was never installed here:
+                                   # no clang, so build-kernel.sh alone dies at
+                                   # include/config/auto.conf with "clang: not found"
 scripts/build-kernel.sh            # ~95 min: downloads 7.2.7, patches it, builds it
 scripts/install-kernel.sh          # staged kernel -> the rebuilt rootfs, depmod, initramfs
 scripts/verify-rootfs.sh           # what write-sd.sh / make-image.sh check first
 ```
+
+The internal install has every *device* tool (`cgpt`, `futility`, `depthchargectl`, `rsync`, `xz`,
+`zstd`), but not the compiler, the Rust bindings or `debootstrap` — `00-deps.sh` is the step that
+adds them, and it is the one step here that writes outside the build root.
 
 Then two ways, independent of each other:
 
