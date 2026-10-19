@@ -66,6 +66,14 @@ pacman), and `omarchy-update-time` has one (its row resyncs the clock). The link
 count went `314 → 313` in the same step: two `omarchy-channel-*` links pruned, one
 `omarchy-update-time` added.
 
+Two checks came after this capture (`commit 2e3d8be`): the touchpad scrolls
+naturally (the port's default, asked of the running compositor as
+`input:touchpad:natural_scroll`) and `~/.local/state/omarchy/done/first-run-user`
+exists (so a login no longer retries the un-vendored first-run steps). The same
+machine reports **74 OK, 2 WARN, 0 FAIL** with them, after the change was applied
+by hand; the file above is the tree that was actually installed, so it keeps its
+own counts and the rebuilt image is what will carry these two.
+
 The audit also corrected one check that was not wrong about the port but about
 itself: `polkitd is active` was asserted with `systemctl is-active`, and
 `polkit.service` is a **static** unit with no `[Install]` — polkitd is started by
