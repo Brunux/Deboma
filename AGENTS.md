@@ -547,6 +547,14 @@ the card that has already been tested.
   passed to `depthchargectl` must not add it again.
 - Verify with `futility show <kpart>`: expect a dev-signed key block, preamble 2.2 and
   `Body verification succeeded`.
+- **The published `-rootfs`-side kpart is equivalent to, not byte-identical with, the image's `p1`.**
+  `make-release.sh` builds each one separately (the image's from the mounted image, the standalone
+  from the rootfs), and both are correct: same kernel, initrd, DTBs and command line, including the
+  same `root=UUID`. What differs is the FIT's `/timestamp` — the two builds are minutes apart — and,
+  necessarily, the vboot signature over that body, a 512-byte blob right after the keyblock. v0.2.0's
+  pair differs in exactly 510 bytes: two in the timestamp and the rest of the signature. So `cmp`
+  answering "differ" there is expected, and the thing that would actually matter is a different
+  `root=UUID` in either one (`futility show` prints the cmdline).
 - The FIT carries one config per DTB. With `--board mt8192` no config matches by `compatible`, so
   depthcharge falls back to the **default config, which is the first DTB**: hayato must stay
   first (the alphabetical order of `deviceinfo_dtb="mediatek/mt8192-asurada*"` does that).
