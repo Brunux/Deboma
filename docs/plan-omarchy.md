@@ -254,3 +254,14 @@ port builds it from its own upstream repository at a pinned tag (`scripts/build-
   **Answered:** yes — the `keyd`/udev/ALSA files live under `uis/omarchy/files/`.
 - The first release number for a released Omarchy UI (likely `v0.2.0`, decided at F7).
   **Answered:** `v0.2.0` (see `docs/releases/v0.2.0.md`).
+- Whether to keep upstream's `$OMARCHY_PATH/bin` prepend in the session `PATH`. **Open, low
+  priority:** it is upstream's own (`default/hypr/envs.lua`), and it means a command the port leaves
+  off the `/usr/bin` farm still *runs* when the desktop reaches it and dies on what it reaches for
+  (`pacman`, the un-vendored `install/` tree) rather than not existing. What keeps the feature
+  unoffered is the menu-row hiding, so dropping the prepend would make "left off `PATH`" mean the
+  same thing in a session as in a login shell, at the price of patching a file the pinned tree owns.
+- Where the build root lives (`BUILD_ROOT`, default `~/.cache/debian-aarch64`). **Open:** the default
+  is on the eMMC, which is the disk `install-emmc.sh` rewrites with `rsync --delete`, so a build root
+  kept there is destroyed by the install that uses it (`/deboma-build` was lost that way). A disk that
+  is never installed over is the safer home, chosen with `BUILD_ROOT=<path>` — never with a symlink
+  over the default path, which root's `rsync` refuses to follow.
