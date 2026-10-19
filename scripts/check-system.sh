@@ -660,6 +660,71 @@ section "Omarchy"
 fi
 
 # ---------------------------------------------------------------------------
+if [ "$_UI" = omarchy ]; then
+section "Idle, lock and shell environment"
+	# The idle screensaver paints the logo with ttfx and finds the running effect
+	# again with `pgrep/pkill -x ttfx`, so the name matters as much as the
+	# command: files/usr/local/bin/ttfx runs Debian's python3-terminaltexteffects
+	# in-process to keep it. Without ttfx the screensaver exits immediately, and
+	# nothing locks the screen until the idle-lock deadline.
+	if have ttfx; then
+		ok "ttfx is installed (the screensaver has a renderer)"
+	else
+		fail "ttfx is missing: the screensaver exits immediately (package python3-terminaltexteffects + files/usr/local/bin/ttfx)"
+	fi
+	_scr="$HOME/.config/omarchy/branding/screensaver.txt"
+	if [ -s "$_scr" ]; then
+		ok "the screensaver art is seeded ($(wc -l <"$_scr") line(s))"
+	else
+		fail "$_scr is missing or empty: the screensaver has nothing to paint (setup.sh seeds it from /usr/share/omarchy/logo.txt)"
+	fi
+	[ -s /usr/share/omarchy/logo.txt ] && ok "the packaged logo art is installed" ||
+		warn "/usr/share/omarchy/logo.txt is missing: a custom screensaver logo cannot be regenerated"
+	# Locking goes through Quickshell's PAM service, and the shell refuses to lock
+	# while the config file is missing: `omarchy-shell lock lock` answers
+	# missing-pam, so the key binding and the suspend path both leave the session
+	# exposed. Quickshell reads the file, so its absence is not a runtime error.
+	if [ -f /etc/pam.d/omarchy-lock-password ]; then
+		ok "/etc/pam.d/omarchy-lock-password is installed (the lock screen can authenticate)"
+	else
+		fail "/etc/pam.d/omarchy-lock-password is missing: the lock screen cannot authenticate and the desktop never locks"
+	fi
+	_locks="$(timeout 5 omarchy-shell lock status 2>/dev/null || true)"
+	if grep -qF '"passwordPam":true' <<<"$_locks"; then
+		ok "the running shell reports a usable password lock"
+	elif [ -n "$_locks" ]; then
+		fail "the running shell does not see the lock screen's PAM config: $(printf '%s' "$_locks" | head -c 100)"
+	else
+		skip "the shell is not answering: the lock state cannot be read"
+	fi
+	# Print (SUPER+SHIFT+S on this keyboard) captures through
+	# omarchy-capture-screenshot, which execs omasnap; without the binary the
+	# whole capture menu opens and closes without a picture.
+	if have omasnap; then
+		ok "omasnap is installed (Print captures a screenshot)"
+	else
+		fail "omasnap is missing: omarchy-capture-screenshot has nothing to run (scripts/build-omasnap.sh)"
+	fi
+	# Debian installs the Rust bat as batcat, so the port provides the Arch name;
+	# the prompt needs starship, the keybindings view scans with lua and the
+	# terminal helpers report through notify-send. Each degrades silently.
+	_missing_env=""
+	for _c in starship bat lua notify-send; do
+		have "$_c" || _missing_env="$_missing_env $_c"
+	done
+	if [ -z "$_missing_env" ]; then
+		ok "the shell environment's helpers are installed (starship, bat, lua, notify-send)"
+	else
+		warn "missing shell environment helper(s):$_missing_env (the prompt, the man pager, the keybindings view or terminal notifications degrade)"
+	fi
+	if grep -qsF '/usr/share/omarchy/default/bashrc' "$HOME/.bashrc" 2>/dev/null; then
+		ok "~/.bashrc sources the Omarchy shell environment"
+	else
+		warn "~/.bashrc does not source /usr/share/omarchy/default/bashrc: the aliases, functions and the prompt are not loaded"
+	fi
+fi
+
+# ---------------------------------------------------------------------------
 section "Fonts and icons"
 # ---------------------------------------------------------------------------
 if have fc-list; then

@@ -83,6 +83,9 @@ uis/<ui>/                  one directory per graphical shell
   setup.sh                 optional; run inside the chroot after files/ is
                            overlaid, for what a plain tree cannot express
                            (seeding ~/.config from a vendored tree, symlink farms)
+  version                  optional pins for components the UI builds itself;
+                           omarchy/ has `omasnap.version` (the capture overlay
+                           has no Debian package, so build-omasnap.sh needs a tag)
   README.md                what the shell ships and how it deviates upstream
 packages/                  device-agnostic base package lists (base.list)
 scripts/                   lib.sh (device/kernel/UI resolution), lib-cgpt.sh
@@ -137,6 +140,14 @@ uncommitted changes, since those do not travel into the image.
   a slow one (`check-system.sh`'s firmware check reported a loaded firmware as missing on the card
   and as present on the host). Capture the output first and use `grep -q PAT <<<"$var"`, or a
   single `grep -rqs PAT <path>`.
+- **`cp -a "$src/." "$dst/"` rewrites `$dst` itself, not only its contents**: GNU cp applies the
+  source directory's **owner and mode** to the destination directory. Verified with cp 9.x: a
+  root-owned 0755 `dst` came out owned by the invoking user and 0775 after copying a user-owned
+  `src/.` into it. A build script that copies a staged tree into a rootfs this way silently leaves
+  the destination (e.g. `/usr/share` and `/usr/share/applications`) owned and writable by the
+  build user. `install-omasnap.sh` installs its files one at a time for exactly this reason, and
+  `build-rootfs.sh` `chown -R root:root`s the staged UI tree before `rootfs-setup.sh` copies it.
+  `install -Dm<mode>` (which creates the parents as root) is the safe form.
 
 ### Host toolchain
 
@@ -335,6 +346,59 @@ uncommitted changes, since those do not travel into the image.
   works. It is in `uis/omarchy/packages.list`; `check-system.sh` warns when `/usr/bin/Xwayland`
   is missing.
 - `pactl` (the XF86Audio* keys) comes from `pulseaudio-utils`, not from `pipewire-pulse`.
+- **Screensaver and lock**: `omarchy-screensaver` paints the logo with **ttfx** (Omarchy's Rust
+  port of terminaltexteffects; Debian packages the Python original instead) and it finds *and
+  kills* the effect with `pgrep -x ttfx` / `pkill -x ttfx`, so the **process name**, not just a
+  renderer, is part of the contract. `uis/omarchy/files/usr/local/bin/ttfx` runs Debian's
+  `python3-terminaltexteffects` **in-process** (an `exec` would rename the process and the
+  screensaver would never end), and `setup.sh` seeds `~/.config/omarchy/branding/screensaver.txt`
+  from the vendored `/usr/share/omarchy/logo.txt` (`icon.txt` → `about.txt` for the About panel).
+  Missing either one makes the screensaver exit immediately with no message at all. A cycle whose
+  screensaver is dismissed before the lock deadline is cancelled **on purpose** (the "I am back,
+  do not lock" path), and a lock that has already engaged is a Wayland session lock: nothing but
+  the keyboard/`wtype` in that session can answer it.
+- **Lock screen PAM**: Quickshell's lock screen authenticates through the PAM service
+  **`omarchy-lock-password`**, i.e. `/etc/pam.d/omarchy-lock-password`. Upstream's
+  `omarchy-apply-lock` writes that file from Arch's stack (`system-local-login`,
+  `pam_systemd_home.so` which Debian does not ship, `pam_faillock` whose tally directory
+  `/var/run/faillock` nothing creates), so it is **excluded** and
+  `uis/omarchy/files/etc/pam.d/omarchy-lock-password` ships Debian's stack
+  (`auth include common-auth` + `account include common-account`). Without the file the shell
+  answers `missing-pam` to `omarchy-shell lock lock`, Super+Ctrl+L does nothing, the *idle* lock
+  never engages, and `omarchy-system-sleep-lock` suspends with the session exposed - all of it
+  silently. `omarchy-shell lock status` publishes `passwordPam`, which is what `check-system.sh`
+  asks.
+- **Shell environment**: Debian seeds `~/.bashrc` from `/etc/skel`, and nothing sourced Omarchy's
+  `$OMARCHY_PATH/default/bashrc`, so the `ls`→`eza` aliases, the `ff`/`ll` helpers, zoxide/fzf
+  initialisation and the starship prompt never loaded. `setup.sh` **appends** the source line
+  (upstream replaces the file when it is one of the known defaults; appending keeps Debian's
+  history/lesspipe/completion settings) and links `/usr/local/bin/bat` → `/usr/bin/batcat`:
+  Debian's package of the Rust `bat` installs the binary as `batcat`, while Omarchy's aliases, its
+  `MANPAGER` and the fzf previews call `bat`. `fd-find` needs no such link - the pinned tree never
+  calls `fd`. `starship`, `lua5.4` and `libnotify-bin` are in `packages.list`, and each one
+  degrades *silently*: no prompt, an empty keybindings view (`omarchy-menu-keybindings` returns
+  early when `command -v lua` fails) and no terminal notifications.
+- **`file` and `ping`**: `omarchy-transcode`/`-ascii` sniff a MIME type with `file` before the
+  menu can tell a picture from a video - without it the rows were excluded outright. `file` is in
+  `packages/base.list` now and the two commands are back on PATH. `omarchy-debug` reaches the
+  network with `ping`, which Arch's base provides and Debian's does not (`iputils-ping`).
+- **omasnap**: `omarchy-capture-screenshot` ends in `exec omasnap`, so Print and Super+Shift+S do
+  nothing without the binary, and Debian packages neither omasnap nor satty. The port builds
+  upstream's own tool from `omacom/omasnap` at the tag pinned in `uis/omarchy/omasnap.version`
+  (`scripts/build-omasnap.sh` → `scripts/install-omasnap.sh`, the same stage/install split as the
+  kernel). Its run-time libraries (`libqt6widgets6`, `libqt6dbus6`,
+  `liblayershellqtinterface6`) are in `packages.list`, because the shell's QML modules do not
+  pull the Widgets stack in. Debian's `liblayershellqtinterface6` ships **no
+  `wayland-shell-integration` plugin**, so Qt cannot select the `layer-shell` integration and
+  logs `Could not load the Qt platform plugin "wayland"` while omasnap maps its overlay as an
+  ordinary fullscreen window instead of a layer surface - visually identical here (verified by
+  screenshotting the overlay), so the plugin is not rebuilt from source.
+- **Menu rows that are submenus**: the
+  `~/.config/omarchy/extensions/omarchy-menu.jsonc` generator in `setup.sh` hides a row by
+  matching its `action` against the `EXCLUDE` globs, but a *submenu parent* has no `action` at all
+  and has to be named by id in `HIDE_ROWS`. `trigger.share` is the one that matters: every row
+  under it funnels into LocalSend, which Debian does not package, so the whole submenu is hidden
+  (a submenu left with no visible row disappears with it).
 
 ### ChromeOS GPT (`cgpt`)
 
@@ -458,6 +522,9 @@ scripts/00-deps.sh          # install host build deps (apk or apt), re-execs via
 scripts/build-kernel.sh     # mainline 7.2.7 + patches + config  -> $WORK_DIR/kernel-stage
 scripts/build-rootfs.sh     # debootstrap Debian forky rootfs    -> $WORK_DIR/rootfs
 scripts/install-kernel.sh   # copy staged kernel into the rootfs, depmod, initramfs
+scripts/build-omasnap.sh    # omasnap (the capture overlay) from its pinned tag
+                            #                                 -> $WORK_DIR/omasnap-stage
+scripts/install-omasnap.sh  # copy staged omasnap into a rootfs
 scripts/make-kpart.sh       # signed depthcharge FIT kpart       -> $WORK_DIR/vmlinuz.kpart
 scripts/write-sd.sh [dev]   # partition+populate a microSD/USB (default /dev/mmcblk1)
 scripts/make-image.sh       # distributable disk image from the rootfs (no card needed)
@@ -470,7 +537,7 @@ scripts/wifi.sh export      # saved NetworkManager Wi-Fi profiles -> $WIFI_DIR
 scripts/wifi.sh import      # $WIFI_DIR -> a rootfs (drops interface-name=)
 scripts/check-system.sh     # (on the booted image) hardware + configuration report
 
-scripts/build.sh            # full pipeline (kernel + rootfs + kernel + kpart)
+scripts/build.sh            # full pipeline (kernel + omasnap + rootfs + kernel + omasnap + kpart)
 ```
 
 `scripts/build-kernel.sh` chooses its own `make -j` count rather than using bare `nproc`: this
@@ -479,6 +546,13 @@ can hand out (`MemAvailable` minus a 768 MiB reserve for the desktop, divided by
 job, floor 2, ceiling `nproc`). A quiet machine gets all 8 cores; the same build next to a loaded
 desktop gets 3 or 4 instead of swapping until the OOM killer takes a compiler and the build with
 it. `JOBS=<n>` overrides the choice, and the `Building kernel <release> (N jobs)` line records it.
+
+`scripts/build-omasnap.sh` does the same for the Qt build it is (8 cores, 4 GiB, one clang-grade
+translation unit at a time) with a 700 MiB-per-job peak and a 1 GiB reserve, stages a tree under
+`$WORK_DIR/omasnap-stage` (from the tag in `uis/omarchy/omasnap.version`), and
+`scripts/install-omasnap.sh` copies it into a rootfs the way `install-kernel.sh` does for the
+kernel. It is a separate step because omasnap is not packaged in Debian and the desktop's capture
+commands `exec` it (see *Userspace / UI*).
 
 `scripts/lib-cgpt.sh` holds the one copy of the ChromeOS GPT layout, used by `write-sd.sh`,
 `install-emmc.sh`, `install-kpart.sh`, `make-image.sh` and `make-release.sh`; `BOOT_SIZE_MIB` (512)
@@ -576,7 +650,9 @@ from a root shell it re-executes
 itself as that user, and the privileged reads go through `sudo -n`. Every check maps to a bug this
 port has already hit — keyd swallowing `KEY_SLEEP`, greetd's `vt`/user, the UCM boot sequence, ALSA's
 missing `default` PCM, the backlight udev rule, the font fallback, `interface-name=` in the Wi-Fi
-profiles, the clock, the `fstab` UUID, the kernel partition holding a signed FIT — so a FAIL there is
+profiles, the clock, the `fstab` UUID, the kernel partition holding a signed FIT, the screensaver's
+`ttfx` and its branding file, the lock screen's PAM file (and the running shell's `passwordPam`),
+`omasnap`, the shell-environment helpers and `~/.bashrc` sourcing Omarchy's rc — so a FAIL there is
 a regression, not a hypothetical. It
 exits non-zero when something FAILs.
 

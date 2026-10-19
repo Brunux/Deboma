@@ -1,0 +1,29 @@
+#!/usr/bin/python3
+# ttfx — terminal text effects, the program the Omarchy scripts call.
+#
+# The pinned Omarchy tree runs `ttfx` from three places: the screensaver
+# (omarchy-screensaver), the lock path (omarchy-system-lock) and the provisioning
+# TUI (omarchy-provision-owner). ttfx is Omarchy's own Rust port of
+# terminaltexteffects (github.com/omacom/ttfx, AUR `ttfx`), which this port
+# documented as dropped "Arch/mise-only tooling" — and that is why the screensaver
+# could not run at all on Debian.
+#
+# Debian packages the upstream original as python3-terminaltexteffects, whose
+# command line ttfx reproduces (its own description: "a parity-exact Rust port of
+# terminaltexteffects master"), so this is /usr/bin/tte installed under the name
+# the Omarchy scripts use.
+#
+# The effect must run *in this process*: `exec tte "$@"` would rename the process
+# to `tte`, and omarchy-screensaver waits for the effect with `pgrep -x ttfx`,
+# ends it with `pkill -x ttfx` (omarchy-system-lock waits with `pidwait -x ttfx`).
+# A wrapper that exec'd tte would never match those, so the screensaver would
+# restart the effect in a loop instead of exiting on a keypress.
+import re
+import sys
+
+from terminaltexteffects.__main__ import main
+
+if __name__ == "__main__":
+    # Same normalisation as Debian's /usr/bin/tte, so argv[0] behaviour matches.
+    sys.argv[0] = re.sub(r"(-script\.pyw|\.exe)?$", "", sys.argv[0])
+    sys.exit(main())

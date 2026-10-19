@@ -37,7 +37,7 @@ The desktop is:
 | **Applications** | `.desktop` entries and icons | `applications/` (35 files) |
 | **Installer** | per-platform package lists + provisioning scripts | `install/` (138 files) |
 | **Login** | upstream runs **SDDM**; this port keeps **greetd + tuigreet** | `install/login/` |
-| **Upstream apps** | `omawrite`, `omacalc`, `omasnap`, `owe`, `herdr`, ... | `omarchy-pkgs` (separate, out of scope here) |
+| **Upstream apps** | `omawrite`, `omacalc`, `owe`, `herdr`, ... (`omasnap` is built from source: the capture key `exec`s it) | `omarchy-pkgs` (separate, out of scope here) |
 
 Its package set is composed from `install/omarchy-base.packages` (162 packages), plus
 `install/omarchy-aarch64.packages` (`zram-generator`, `rtkit`), plus `install/omarchy-other.packages`
@@ -148,10 +148,10 @@ column; this table is the justification, to be kept in `uis/omarchy/README.md`.
 | ttf-ia-writer | drop (vendor the font only if a theme link needs it) |
 | docker-buildx / docker-compose-v2 | `docker-buildx` / `docker-compose` |
 | dotnet-runtime | drop (not needed for the desktop) |
-| mise-bin, ttfx, superwhisper-bin | drop — Arch/mise-tooling; Debian ships the tools directly where needed |
+| mise-bin, ttfx, superwhisper-bin | drop — Arch/mise-tooling; Debian ships the tools directly where needed. `ttfx` is the one exception: `omarchy-screensaver` calls it by name and Debian has only the upstream `python3-terminaltexteffects`, so the port ships a shim under `files/usr/local/bin/ttfx` (see `uis/omarchy/README.md`) |
 | localsend, moonray-qt, obsidian, pinta, gpu-screen-recorder, wl-screenrec | drop for the first milestone |
 | pacman, yay, pacman-contrib, expac, kernel-modules-hook, initramfs/mkinitcpio hooks, limine, plymouth packages | drop — Debian's own package manager, `initramfs-tools` and this repo's kernel partition flow replace them |
-| omacalc, omacut, omawrite, omasnap, owe, owe-lockfeed, herdr, hype, aether, gliff, monologue, signed, tobi-try, usage, cliamp, disktree-bin | **deferred** — `omarchy-pkgs` applications, out of scope for the first milestone (Phase 8) |
+| omacalc, omacut, omawrite, owe, owe-lockfeed, herdr, hype, aether, gliff, monologue, signed, tobi-try, usage, cliamp, disktree-bin | **deferred** — `omarchy-pkgs` applications, out of scope for the first milestone (Phase 8). `omasnap`, listed here originally, is **built from source** instead: the capture key `exec`s it and no Debian package provides it (`scripts/build-omasnap.sh`, pin in `uis/omarchy/omasnap.version`) |
 
 ### Build from source (only if a core piece needs it)
 
@@ -216,8 +216,11 @@ sanitising the artifact). *Verify:* a report in `reports/` from the booted card,
 whose notes do not claim more than that report shows.
 
 **F8 — (deferred) the `omarchy-pkgs` applications.**
-`omawrite`, `omacalc`, `omasnap`, `owe`, ... built for Debian, once the desktop shell itself is
-proven. Not part of this milestone.
+`omawrite`, `omacalc`, `owe`, ... built for Debian, once the desktop shell itself is
+proven. Not part of this milestone. **`omasnap` left this list during the F7 audit**: the
+desktop's capture key runs `exec omasnap` and nothing else provides a capture overlay, so the
+port builds it from its own upstream repository at a pinned tag (`scripts/build-omasnap.sh`,
+`uis/omarchy/omasnap.version`) rather than waiting for a Debian package that does not exist.
 
 ## 6. Risks
 

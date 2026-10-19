@@ -45,6 +45,11 @@ EXCLUDE=(
 	'omarchy-snapshot'
 	'omarchy-boot-direct'
 	'omarchy-setup-direct-boot'
+	# omarchy-setup-input installs Fcitx5 through omarchy-pkg-add (pacman). This
+	# port has no input-method engine, so the command and its Setup row are left
+	# out together; SUPER+I / SUPER+SHIFT+I stay bound and do nothing without
+	# fcitx5 (the CTRL+SPACE passthrough is gated on fcitx5-remote already).
+	'omarchy-setup-input'
 	'omarchy-mise-*'
 	'omarchy-agent*'
 	'omarchy-voxtype*'
@@ -70,11 +75,22 @@ EXCLUDE=(
 	'omarchy-sudo-passwordless'
 	'omarchy-windows-*'
 	'omarchy-upload-log'
-	'omarchy-transcode'
-	'omarchy-transcode-ascii'
+	# omarchy-transcode and omarchy-transcode-ascii are deliberately NOT here:
+	# they need only what this port installs (file, magick/convert, ffmpeg,
+	# wl-copy and awk) and were left out while `file` was missing, which broke
+	# the MIME sniff before the menu could tell a picture from a video.
+	# `omarchy transcode ascii <image> <output>` is also how a custom screensaver
+	# logo is made.
+	# The camera overlay needs a working MT8192 camera stack, which this port does
+	# not have, so the two helpers that list and resize it stay out.
 	'omarchy-capture-webcam-list'
 	'omarchy-capture-webcam-resize'
 	'omarchy-apply-hardware'
+	# omarchy-apply-lock writes the lock screen's PAM file from Arch's stack
+	# (system-local-login, pam_systemd_home, pam_faillock without its tally
+	# directory). uis/omarchy/files/etc/pam.d/omarchy-lock-password ships the
+	# Debian stack instead, so this command must stay off PATH: running it would
+	# replace that file and the lock screen would reject the correct password.
 	'omarchy-apply-lock'
 	'omarchy-apply-system'
 	'omarchy-apply-n1x-gpu-memory'
@@ -84,6 +100,15 @@ EXCLUDE=(
 	'omarchy-system-factory-reset-finish'
 	'omarchy-n1x-probe'
 	'omarchy-cliamp'
+)
+
+# Menu rows whose action needs something Debian does not package at all, listed
+# by menu id because the EXCLUDE globs above can only match Arch-only commands.
+# Every Share row ends in LocalSend — the clipboard, file and folder rows go
+# through omarchy-menu-share and the Receive row calls it directly — and there is
+# no localsend in Debian; hiding the parent row takes the submenu with it.
+HIDE_ROWS=(
+	'trigger.share'
 )
 
 log "Putting the omarchy-* commands on PATH (/usr/bin)"
@@ -129,6 +154,56 @@ for entry in omarchy uwsm environment.d; do
 done
 
 chown -R "$USERNAME:$USERNAME" "$HOME/.config"
+
+# The screensaver and the About panel paint the Omarchy logo from plain text:
+# omarchy-screensaver runs `ttfx -i ~/.config/omarchy/branding/screensaver.txt`
+# and the About panel reads ~/.config/omarchy/branding/about.txt. Upstream's
+# package installs the two sources as /usr/share/omarchy/{logo,icon}.txt (both
+# vendored under files/usr/share/omarchy/) and its installer seeds these copies;
+# nothing did here, so the screensaver had no input file and About was empty.
+# `omarchy transcode ascii <image> <output>` replaces either with your own logo.
+log "Seeding the screensaver and About branding"
+if [ -f "$OMARCHY_PATH/logo.txt" ] && [ -f "$OMARCHY_PATH/icon.txt" ]; then
+	install -d -m 0755 -o "$USERNAME" -g "$USERNAME" "$HOME/.config/omarchy/branding"
+	install -m 0644 -o "$USERNAME" -g "$USERNAME" \
+		"$OMARCHY_PATH/logo.txt" "$HOME/.config/omarchy/branding/screensaver.txt"
+	install -m 0644 -o "$USERNAME" -g "$USERNAME" \
+		"$OMARCHY_PATH/icon.txt" "$HOME/.config/omarchy/branding/about.txt"
+else
+	warn "$OMARCHY_PATH/logo.txt or icon.txt is missing; the screensaver has nothing to paint"
+fi
+
+# ~/.bashrc: Debian seeds it from /etc/skel, and nothing sourced Omarchy's shell
+# environment, so `ls` stayed Debian's ls, the ff/ll helpers did not exist,
+# zoxide and fzf were never initialised and starship never drew the prompt.
+# Upstream copies default/bashrc over ~/.bashrc when that file is missing or is a
+# known default (install_bash_startup in omarchy-upgrade-to-quattro); the port
+# appends the source line to Debian's file instead, so the history, lesspipe and
+# completion settings Debian writes there keep working. default/bashrc returns
+# early for non-interactive shells, so non-login scripts are unaffected.
+log "Wiring Omarchy's shell environment into ~/.bashrc"
+_bashrc="$HOME/.bashrc"
+if [ ! -e "$_bashrc" ]; then
+	install -m 0644 -o "$USERNAME" -g "$USERNAME" /dev/null "$_bashrc"
+fi
+if ! grep -qF '/usr/share/omarchy/default/bashrc' "$_bashrc"; then
+	cat >>"$_bashrc" <<'EOF'
+
+# Omarchy aliases, functions, zoxide/fzf integration and the starship prompt.
+[[ -r /usr/share/omarchy/default/bashrc ]] && source /usr/share/omarchy/default/bashrc
+EOF
+	chown "$USERNAME:$USERNAME" "$_bashrc"
+fi
+
+# Arch installs the Rust bat as `bat`; Debian's package of the same program
+# installs the binary as `batcat` (the name `bat` belongs to an unrelated
+# package). Omarchy's aliases, its MANPAGER and the fzf previews call `bat`, so
+# the Arch name is provided here; /usr/local/bin precedes /usr/bin and no Debian
+# package ships /usr/local/bin/bat. `fd` needs no alias: the pinned tree never
+# calls it, and fd-find is installed for the user as `fdfind`.
+log "Providing the Arch name of bat (/usr/local/bin/bat -> /usr/bin/batcat)"
+install -d -m 0755 /usr/local/bin
+ln -sf /usr/bin/batcat /usr/local/bin/bat
 
 # UWSM is what starts the session, and it sources /usr/share/uwsm/env.d, so the
 # Omarchy env bootstrap lives there rather than only in ~/.config.
@@ -222,22 +297,34 @@ if [ -f "$_menu" ]; then
 		printf '  // image build, so add your own rows outside this block.\n'
 		while IFS= read -r _line; do
 			case "$_line" in
-				*'"action":"'*) ;;
+				[[:space:]]*'"'*) ;;
 				*) continue ;;
 			esac
 			_id=${_line#*\"}; _id=${_id%%\"*}
-			_action=${_line#*\"action\":\"}; _action=${_action%%\"*}
 			_skip=0
-			# Word-split the action and match every token against the same
-			# globs the PATH exclusion uses, so "needs an Arch-only command"
-			# has one definition.
-			for _tok in $(printf '%s' "$_action" | tr -c 'A-Za-z0-9_.:/-' ' '); do
-				for _pat in "${EXCLUDE[@]}"; do
-					# shellcheck disable=SC2254  # the RHS is meant to be a glob
-					if [[ $_tok == $_pat ]]; then _skip=1; break; fi
-				done
-				[ "$_skip" = 1 ] && break
+			# Rows that reach for something Debian does not package at all
+			# (LocalSend) are listed by id; a submenu parent has no action, so
+			# this test has to come before the action is required.
+			for _row in "${HIDE_ROWS[@]}"; do
+				if [[ $_id == $_row ]]; then _skip=1; break; fi
 			done
+			if [ "$_skip" = 0 ]; then
+				case "$_line" in
+					*'"action":"'*) ;;
+					*) continue ;;
+				esac
+				_action=${_line#*\"action\":\"}; _action=${_action%%\"*}
+				# Word-split the action and match every token against the same
+				# globs the PATH exclusion uses, so "needs an Arch-only command"
+				# has one definition.
+				for _tok in $(printf '%s' "$_action" | tr -c 'A-Za-z0-9_.:/-' ' '); do
+					for _pat in "${EXCLUDE[@]}"; do
+						# shellcheck disable=SC2254  # the RHS is meant to be a glob
+						if [[ $_tok == $_pat ]]; then _skip=1; break; fi
+					done
+					[ "$_skip" = 1 ] && break
+				done
+			fi
 			[ "$_skip" = 1 ] || continue
 			if [ "$_first" = 1 ]; then _first=0; else printf ',\n'; fi
 			printf '  "%s": {"when":"false"}' "$_id"

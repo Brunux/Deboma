@@ -28,6 +28,9 @@ if command -v apk >/dev/null 2>&1; then
 		git curl wget \
 		dtc kmod \
 		make gcc musl-dev binutils pkgconf \
+		qt6-qtbase-dev qt6-qtbase-private-dev layershellqt-dev \
+		libdeflate-dev wayland-dev wayland-protocols \
+		cmake samurai \
 		debootstrap \
 		cgpt vboot-utils depthcharge-tools \
 		e2fsprogs dosfstools parted gptfdisk \
@@ -42,6 +45,8 @@ elif command -v apt-get >/dev/null 2>&1; then
 	#   * futility is `vboot-kernel-utils` and cgpt is `cgpt`: vboot-utils only
 	#     ships crossystem, so installing it alone leaves both missing;
 	#   * gptfdisk is `gdisk`, dtc is `device-tree-compiler`.
+	# omasnap (scripts/build-omasnap.sh) brings its own set: Qt6 Widgets,
+	# LayerShellQt, libdeflate and wayland-client, with CMake and Ninja.
 	# clang/lld/llvm build the kernel with LLVM=1; rustc/rust-src/bindgen are
 	# needed by CONFIG_RUST=y and dwarves by CONFIG_DEBUG_INFO_BTF=y.
 	log "Installing host build dependencies (apt)"
@@ -58,6 +63,9 @@ elif command -v apt-get >/dev/null 2>&1; then
 		git curl wget ca-certificates \
 		device-tree-compiler kmod \
 		make pkgconf \
+		qt6-base-dev qt6-base-dev-tools liblayershellqtinterface-dev \
+		libdeflate-dev wayland-protocols libwayland-dev \
+		cmake ninja-build \
 		debootstrap \
 		cgpt vboot-kernel-utils depthcharge-tools \
 		e2fsprogs dosfstools parted gdisk \

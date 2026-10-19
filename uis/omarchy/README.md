@@ -29,10 +29,13 @@ already proven for the Google Hayato.
 
 **The desktop only.** There is no Arch base: no `pacman`/`yay`, no ISO builder,
 no Omarchy installer/provisioner, no btrfs/snapper/LUKS, and none of the
-`omarchy-pkgs` applications (`omawrite`, `omacalc`, `omasnap`, `owe`, …) in this
-milestone. The distribution stays Debian; the port contributes the desktop
-session, its shell, its configuration, its themes and the tooling the desktop
-itself uses.
+`omarchy-pkgs` applications (`omawrite`, `omacalc`, `owe`, …) in this
+milestone. The one exception is **omasnap**, the screenshot/annotation overlay
+the desktop's own capture commands exec: there is no Debian package for it, so
+the port builds it from its upstream repository at the tag pinned in
+`omasnap.version` (`scripts/build-omasnap.sh`). The distribution stays Debian;
+the port contributes the desktop session, its shell, its configuration, its
+themes and the tooling the desktop itself uses.
 
 ## Layout
 
@@ -41,6 +44,7 @@ itself uses.
 | `packages.list` | The Debian package set (this file's companion), the Arch→Debian map in table form below. |
 | `PROVENANCE.md` | The pinned upstream commit and exactly what was vendored or excluded. |
 | `patches/` | `*.patch` + `series` against the pinned tree; empty until the port needs one. |
+| `omasnap.version` | The pinned tag of the **capture overlay** (`omacom/omasnap`) that `scripts/build-omasnap.sh` builds, because omarchy-capture-screenshot execs it and Debian packages none. |
 | `files/usr/share/omarchy/` | The curated vendored Omarchy tree (`config/`, `shell/`, `applications/`, `etc/`, `bin/`, `default/`, `themes/`, `version`) at upstream's runtime path. |
 | `files/usr/share/wayland-sessions/omarchy.desktop` | The session entry tuigreet lists; runs UWSM → Hyprland. |
 | `files/usr/local/bin/omarchy-session` | The command greetd runs by default: `uwsm start … hyprland.desktop`, as one argv. |
@@ -159,6 +163,67 @@ screenshotting it: `Install` went from thirteen rows to one, `Update` kept all
 six, `Install > Style` kept `Theme` and `Background` (its Arch-only `Fonts` row
 is gone).
 
+### Second audit: the installed eMMC system (2026-10-19)
+
+The card's own install (`scripts/install-emmc.sh`) was audited against the
+Omarchy manual, feature by feature, on the running desktop. The boot chain,
+Wi-Fi, Bluetooth, audio, suspend, battery and theme all behaved; what did **not**
+were the four features that depend on something Arch's `omarchy` package installs
+in a step this port has no counterpart for. Each one is silent — the key does
+nothing, no error is shown — which is exactly why they are now checks in
+`scripts/check-system.sh`.
+
+| Symptom | What it actually was | Fix |
+|---|---|---|
+| The idle screensaver never appeared | `omarchy-screensaver` paints the logo with **ttfx**, which Debian does not package. | `files/usr/local/bin/ttfx` runs Debian's `python3-terminaltexteffects` in-process under ttfx's own name. |
+| …and with ttfx in place it still failed | it reads `~/.config/omarchy/branding/screensaver.txt`, and neither that file nor its source `/usr/share/omarchy/logo.txt` was ever vendored or seeded. | `logo.txt`/`icon.txt` vendored; `setup.sh` seeds `~/.config/omarchy/branding/{screensaver,about}.txt` from them. |
+| The lock key, `omarchy system lock` and the idle lock all did nothing (`missing-pam`) | Quickshell's lock screen authenticates through the PAM service **`omarchy-lock-password`**, i.e. `/etc/pam.d/omarchy-lock-password`. Upstream writes that file with `omarchy-apply-lock`, in Arch's shape (`system-local-login`, `pam_systemd_home`, `pam_faillock` with no tally dir) — which is excluded here. | `files/etc/pam.d/omarchy-lock-password` ships Debian's stack: `auth include common-auth` + `account include common-account`, with a comment saying why upstream's is unusable. |
+| Print / SUPER+SHIFT+S captured nothing | `omarchy-capture-screenshot` ends in `exec omasnap`, and omasnap is not packaged. | Built from the pinned tag: `omasnap.version` + `scripts/build-omasnap.sh`/`install-omasnap.sh`. |
+| `ls` was Debian's, no `ff`/`ll`, no prompt | nothing sourced `$OMARCHY_PATH/default/bashrc`; Debian's `~/.bashrc` was all there was. | `setup.sh` appends the `source` line to Debian's `~/.bashrc` (upstream replaces the file when it is a known default; appending keeps Debian's history/lesspipe settings). |
+| `bat: command not found` (the `MANPAGER`, the fzf previews) | Debian's binary is `batcat`. | `setup.sh` links `/usr/local/bin/bat`. |
+| No prompt, empty keybindings view, no terminal notifications | `starship`, `lua` and `notify-send` were missing. | `starship`, `lua5.4` and `libnotify-bin` in `packages.list`. |
+| `omarchy transcode` failed on every file | `file` was missing, so the MIME sniff failed before the menu could tell a picture from a video. | `file` in `packages/base.list`; `omarchy-transcode`/`-ascii` are no longer excluded (they only ever needed tools this port installs). |
+| The Share menu opened flows that died on `command not found` | every Share row funnels into **LocalSend**, which Debian does not package. | the parent row `trigger.share` is hidden, which takes the submenu with it. A submenu parent has no `action`, so `setup.sh`'s generator now tests the row *id* before it requires an action. |
+| `Setup > Input Methods` died on `command not found` | it calls `omarchy-setup-input`, which installs Fcitx5 through `omarchy-pkg-add`. | excluded with the rest of the Arch installers; the key binding stays and does nothing without `fcitx5`. |
+
+**Verified on the eMMC install, not inferred:**
+
+- **Idle → screensaver → lock.** With the timings temporarily shortened,
+  `journalctl` shows the whole chain: `idle-cycle-start` → the screensaver
+  process starts (its `ttfx` argv and the rendered frame were captured) →
+  `lock-system: lock-timeout` → `session-locked=true`/`secure=true`, and
+  `passwordPam:true` throughout. Unlocking with the password returns
+  `locked:false`. The screensaver exits early only when something takes the
+  keyboard — by design; a cycle whose screensaver is dismissed before the lock
+  deadline is cancelled rather than locked.
+- **Screenshots.** `omarchy-capture-screenshot fullscreen copy` puts a
+  1366×912 PNG on the clipboard, and the interactive overlay (region picker,
+  hint bar, key legend) renders and closes on Escape.
+- **`check-system.sh`** on the eMMC install: **68 OK, 2 WARN, 0 FAIL**
+  (`reports/2026-10-19-emmc-desktop.txt`; the WARNs are the `sbs-8-000b`
+  fuel-gauge noise and no suspend recorded in that boot).
+
+**Left as-is, with the reason:**
+
+- **LayerShellQt's Qt plugin.** Debian's `liblayershellqtinterface6` ships the
+  library but **no `wayland-shell-integration` plugin**, so Qt cannot select the
+  `layer-shell` shell integration and logs
+  `Could not load the Qt platform plugin "wayland"` on stderr. omasnap then maps
+  its overlay as an ordinary fullscreen window instead of a layer surface. It is
+  visually identical here — verified by screenshotting the overlay — and the
+  pin/annotation flow is unaffected, so building the missing plugin from the
+  LayerShellQt source is not worth a second component. `libqt6widgets6` and
+  `libqt6dbus6` are in `packages.list` because the binary needs the Widgets
+  stack, which the QML modules do not pull in.
+- **Touchpad scroll direction.** Upstream's default is
+  `natural_scroll = false`. This machine is used with natural (inverse)
+  scrolling, set as a **personal override** in `~/.config/hypr/input.lua` —
+  the file Omarchy reserves for that — so the port keeps shipping upstream's
+  default. Only that one key is set: `hl.config` merges, so the layout, still
+  `us`, and the touchpad defaults survive (checked with `hyprctl getoption`).
+  Making it the port's default is a two-line change in `setup.sh` if it should
+  apply to every install.
+
 ### Package substitutions
 
 | Omarchy (Arch) | Debian (forky) | Why |
@@ -173,7 +238,9 @@ is gone).
 | `tldr` | `tealdeer` | Debian's tldr client. |
 | `evince` | `papers` | GNOME's successor viewer; `evince` is a transitional name in forky. |
 | `gpu-screen-recorder` | `wf-recorder` | Not packaged; `omarchy-capture-screenrecording` falls back to wf-recorder. |
-| `satty` | `swappy` | Not packaged; screenshot annotation uses swappy. |
+| `satty` | `omasnap` (built from source) + `swappy` | Neither `satty` nor omasnap is packaged. The capture key of the pinned tree runs **omasnap**, so the port builds it (see *Layout*); `swappy` stays as Debian's standalone annotator, which the pinned tree itself no longer calls. |
+| `ttfx` | `python3-terminaltexteffects` + `files/usr/local/bin/ttfx` | `omarchy-screensaver` paints its logo with **ttfx** — Omarchy's Rust port of terminaltexteffects — and finds *and kills* the effect with `pgrep -x ttfx` / `pkill -x ttfx`. Debian ships the upstream Python original (`tte`), so the shim runs it **in-process** under ttfx's own process name; an `exec` would rename the process and the screensaver would never end. |
+| `bat`, `fd` | `batcat`, `fdfind` (plus `/usr/local/bin/bat` → `batcat`) | Debian's packages of the same programs install the binaries under the `-cat`/`-find` names (the bare names belong to unrelated packages). Omarchy's aliases, its `MANPAGER` and the fzf previews call `bat`, so `setup.sh` links the Arch name; the pinned tree never calls `fd`. |
 | `ghostty` | `foot` / `alacritty` / `kitty` | Not packaged; the port ships the three terminals Debian has. |
 | `docker-buildx` / `docker-compose-v2` | `docker-buildx` / `docker-compose` | Debian's names (only if `docker.io` is wanted). |
 | `zram-generator` | `systemd-zram-generator` | The aarch64 addition; `zram-tools` is already in `packages/base.list`. |
@@ -192,11 +259,14 @@ Debian if a fallback OSD is ever wanted.
 
 ### Dropped for this milestone
 
-Arch/mise-only tooling (`mise-bin`, `ttfx`, `superwhisper-bin`), proprietary or
+Arch/mise-only tooling (`mise-bin`, `superwhisper-bin`), proprietary or
 unpackaged apps (`localsend`, `moonlight-qt`, `obsidian`, `pinta`,
-`wl-screenrec`), `dotnet-runtime`, and the entire `omarchy-pkgs` application set.
+`wl-screenrec`), `dotnet-runtime`, and the entire `omarchy-pkgs` application set
+(except `omasnap`, which the capture key needs and which is built from source).
 They are recorded in `docs/plan-omarchy.md` §4 and deferred to F8 rather than
-silently forgotten.
+silently forgotten. `localsend` is the one of them the *menu* reaches: every row
+of Share funnels into it, so the whole `trigger.share` submenu is hidden rather
+than offered broken (see the second audit below).
 
 ## Installed package list
 
@@ -219,11 +289,17 @@ and key bindings invoke are all listed there with a comment saying why.
 | F4 Quickshell shell | imports resolve against Debian's quickshell 0.3.2; the shell runs (bar, launcher, OSD); `Owe.LockFeed` deferred. The desktop audit below fixed the launcher (`gtk-launch`) and the font fallback |
 | F5 Hayato quirks (keyd, ALSA UCM, backlight, RAM) | device files + the system subset installed; every Hayato check passes on the first boot |
 | F6 build + off-device validation | done — `UI=omarchy` rootfs builds; see the validation notes below |
-| F7 hardware validation + release | **first boot 2026-10-18** + desktop audit — see *First boot* and *Desktop audit* below; the menu trimming and `xwayland` are the last two fixes, and the clean rebuild + re-report are what close it |
+| F7 hardware validation + release | **first boot 2026-10-18** + desktop audit + the **eMMC install audit 2026-10-19** — see *First boot*, *Desktop audit* and *Second audit* below; the menu trimming and `xwayland` are the last two fixes, and the clean rebuild + re-report are what close it |
 
 The card boots (F7): `reports/2026-10-18-omarchy-desktop.txt` is the first boot of
 this UI, on a card written from `commit 85d32fc` (the card's `REVISION` and
 `/etc/debian-aarch64-revision` agree).
+
+The same system was then installed to the internal eMMC
+(`scripts/install-emmc.sh`, from the running card) and audited there:
+`reports/2026-10-19-emmc-desktop.txt` is that report — **68 OK, 2 WARN, 0 FAIL**,
+captured with `/` on `/dev/mmcblk0p3` and the kernel partition resolved from the
+`kern_guid` in `/proc/cmdline`.
 
 ### First boot (2026-10-18)
 

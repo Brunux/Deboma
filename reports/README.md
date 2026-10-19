@@ -45,3 +45,31 @@ Re-run on the card after the fixes above (hand-installed `gawk` +
 committed as its own report): **57 OK, 2 WARN, 0 FAIL**, with the audio section
 now reaching the card (`HiFi`, Headphones + Speaker sinks) because `pactl` is
 present.
+
+## 2026-10-19-emmc-desktop.txt
+
+The same UI installed to the **internal eMMC** (`scripts/install-emmc.sh`, run
+from the running card), audited against the Omarchy manual: **68 OK, 2 WARN,
+0 FAIL**. `/` is `/dev/mmcblk0p3` and the kernel partition is the one the firmware
+picked (`kern_guid` out of `/proc/cmdline`), so this is the install the machine
+actually runs.
+
+The eight extra OKs over the first report are the checks the audit added
+(`scripts/check-system.sh`, "Idle, lock and shell environment"): the screensaver
+renderer and its seeded art, the lock screen's PAM file and the running shell's
+`passwordPam`, `omasnap`, the shell-environment helpers, and `~/.bashrc` sourcing
+Omarchy's rc.
+
+Like the card re-run above, this is **not** a clean rebuild: the audit's fixes
+were applied by hand to the running system (the four new files, `apt install`
+of `starship`/`libnotify-bin`/`lua5.4`/`file`/`iputils-ping`, the `bat` symlink,
+the `~/.bashrc` line, the menu extension) before the script ran, so the report
+documents the *hardware* and the new checks, not the image as published. A
+`UI=omarchy` rebuild carries the same fixes and is what the next release
+installs.
+
+Both WARNs are the expected ones: the `sbs-8-000b` fuel-gauge noise, and no
+suspend recorded in that boot — the Lock key had not been pressed since
+power-on. Suspend itself is logind's own button path (`KEY_SLEEP` reaches it
+because the keyd map leaves that key alone), and every boot starts at zero
+cycles.

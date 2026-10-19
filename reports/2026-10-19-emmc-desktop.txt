@@ -1,0 +1,121 @@
+debian-aarch64 system report  2026-10-19 00:09:44 CST
+  ----  UI: omarchy
+
+==> Boot
+  ----  kernel  7.2.7-mt81
+  ----  cmdline cros_secure kern_guid=bf020879-879c-fd48-b960-26f0d381665b quiet loglevel=2 root=UUID=87825480-0532-4de7-88d6-5c2e6b1c192a rootwait rw
+  OK    depthcharge substituted kern_guid
+  OK    root=UUID= present
+  OK    kernel partition /dev/mmcblk0p1 (kern_guid=bf020879-879c-fd48-b960-26f0d381665b)
+  OK    the kernel partition holds a dev-signed FIT
+  OK    device tree: Google Hayato rev1
+  OK    modules for 7.2.7-mt81 installed
+
+==> Firmware
+  OK    firmware mediatek/mt8192/scp.img: requested before the rootfs was up, then loaded
+  OK    no errors from the wireless/Bluetooth/audio subsystems
+
+==> Storage
+  ----  root    /dev/mmcblk0p3 (UUID 87825480-0532-4de7-88d6-5c2e6b1c192a)
+  ----  booted from the internal eMMC
+  OK    /etc/fstab matches the mounted root
+  OK    swap active: /dev/zram0
+  OK    /boot is a separate filesystem (/dev/mmcblk0p2) matching /etc/fstab
+  OK    the running kernel's vmlinuz is on /boot
+  OK    root filesystem 10% used
+
+==> Display and GPU
+  OK    display connected on card1-eDP-1
+  OK    panfrost loaded (GPU acceleration available)
+  OK    backlight writable by group video (664 video)
+  OK    session user is in group video
+
+==> Input
+  OK    4 keyboard device(s)
+  OK    6 pointer/touch device(s)
+  ----  devices: cros_ec|cros_ec_buttons|Elan Touchpad|hid-over-i2c 04F3:2E70|hid-over-i2c 04F3:2E70 UNKNOWN|hid-over-i2c 04F3:2E70 UNKNOWN|hid-over-i2c 04F3:2E70 Stylus|hid-over-i2c 04F3:2E70 Stylus|keyd virtual keyboard|keyd virtual pointer|mt8192_mt6359_rt1015p_rt5682 Headset Jack|
+  OK    keyd.service is active
+  OK    keyd leaves the sleep key alone
+  OK    keyd matched its keyboard: 0000:0000:ab51e20b  /etc/keyd/default.conf        (cros_ec)
+
+==> Network
+  OK    wireless interface: wlp1s0
+  ----  regulatory domain: world (country 00), set once NetworkManager or the AP provides one
+  OK    NetworkManager is active (connected:full)
+  OK    1 Wi-Fi profile(s) installed
+  OK    no Wi-Fi profile pins an interface name
+  OK    nmtui present
+
+==> Bluetooth
+  ----  controller 74:4C:A1:XX:XX:XX (public)
+  OK    controller powered
+  ----  btmgmt: 	current settings: powered bondable ssp br/edr le secure-conn wide-band-speech 
+
+==> Audio
+  OK    audio server: PulseAudio (on PipeWire 1.6.9)
+  OK    sound card: alsa_card.platform-sound
+  OK    ALSA codec: mt8192_mt6359 mt8192mt6359rt1 mt8192_mt6359_rt1015p_rt5682
+  OK    card active profile: HiFi
+  OK    sinks: alsa_output.platform-sound.HiFi__Headphones__sink alsa_output.platform-sound.HiFi__Speaker__sink 
+  OK    alsa 'default' PCM available (pipewire-alsa)
+
+==> Suspend and power
+  OK    /sys/power/state advertises suspend (freeze mem disk)
+  OK    systemd-logind is active (its button handling is the polkit-free suspend path)
+  OK    polkitd is active (session suspend via loginctl)
+  WARN  no suspend recorded in this boot: press the Lock key to test it
+
+==> Clock
+  ----  America/Mexico_City / local RTC no
+  OK    clock synchronised
+
+==> Session
+  OK    greetd is active
+  OK    greeter vt = 7
+  OK    greeter user _greetd exists
+  OK    tuigreet is installed
+  OK    Xwayland present (X11 programs can run)
+  OK    every command the Omarchy session invokes is installed
+
+==> Omarchy
+  OK    /usr/share/omarchy is present
+  OK    the omarchy Wayland session entry is installed
+  OK    greetd starts the Omarchy session (omarchy-session)
+  OK    ~/.config/hypr/hyprland.lua is present
+  OK    current theme: tokyo-night
+  OK    314 omarchy-* command(s) on PATH
+  OK    awk keeps line terminators (gawk RT): the theme templates render multiline
+  OK    the generated theme files keep their line breaks
+  OK    JetBrainsMono Nerd Font resolves to a monospace face (JetBrains Mono)
+  OK    the Omarchy application entries are installed
+  OK    the running Hyprland reports no configuration error
+
+==> Idle, lock and shell environment
+  OK    ttfx is installed (the screensaver has a renderer)
+  OK    the screensaver art is seeded (10 line(s))
+  OK    the packaged logo art is installed
+  OK    /etc/pam.d/omarchy-lock-password is installed (the lock screen can authenticate)
+  OK    the running shell reports a usable password lock
+  OK    omasnap is installed (Print captures a screenshot)
+  OK    the shell environment's helpers are installed (starship, bat, lua, notify-send)
+  OK    ~/.bashrc sources the Omarchy shell environment
+
+==> Fonts and icons
+  OK    font family present: JetBrains Mono
+  OK    font family present: FontAwesome
+  OK    font family present: Material Design Icons
+  OK    font family present: Symbols Nerd Font
+
+==> Declared packages
+  OK    all 178 declared package(s) are installed
+
+==> Journal
+  WARN  42 error-priority line(s) this boot; the last ones:
+          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `energy_now' property: -6
+          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `capacity_level' property: -6
+          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `charge_now' property: -6
+          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+
+==> Summary  68 OK, 2 WARN, 0 FAIL

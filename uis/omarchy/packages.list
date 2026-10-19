@@ -182,6 +182,8 @@ gawk
 btop
 fastfetch
 eza
+# Arch's `bat`; Debian's package installs the binary as `batcat`, and setup.sh
+# adds /usr/local/bin/bat so the aliases and MANPAGER that call `bat` work.
 bat
 fd-find
 ripgrep
@@ -190,6 +192,16 @@ lazygit
 jq
 tmux
 zoxide
+# The Omarchy prompt is starship's: default/bash/init initialises it when the
+# binary is present, and without it the prompt stays Debian's.
+starship
+# notify-send: the terminal helpers report through it (omarchy-notification-send
+# is what omarchy-transcode and the capture helpers call). The shell's own
+# notifications are QML and do not need it.
+libnotify-bin
+# lua: the keybindings view (omarchy-menu-keybindings) scans the Lua bindings
+# with it; without it the view silently shows nothing.
+lua5.4
 gum
 tree-sitter-cli
 # Debian's tldr client.
@@ -207,14 +219,31 @@ tesseract-ocr
 tesseract-ocr-eng
 wl-clipboard
 wtype
-# The Arch/wlroots capture stack, mapped to Debian names: grim/slurp for
-# region capture, swappy for annotation (satty is not packaged) and
-# wf-recorder for video (gpu-screen-recorder/wl-screenrec are not packaged).
+# The capture stack. Screenshots go through omasnap, which is what
+# omarchy-capture-screenshot execs (built by scripts/build-omasnap.sh: Debian has
+# no package for it); the frozen-region pickers that OCR, QR and the recorder use
+# are grim + slurp + hyprpicker. wf-recorder is the video fallback where
+# gpu-screen-recorder is not packaged, and swappy is Debian's annotator in place
+# of satty (the pinned tree itself does not call it).
 grim
 slurp
 swappy
 wf-recorder
+# omasnap's run-time libraries: the Qt6 Widgets stack (the QML modules above do
+# not pull it in), Qt6 DBus and LayerShellQt. The Qt6 Wayland client comes with
+# qt6-wayland.
+libqt6widgets6
+libqt6dbus6
+liblayershellqtinterface6
 brightnessctl
+
+# --- screensaver -----------------------------------------------------------
+# The idle screensaver paints Omarchy's logo with ttfx, the desktop's own Rust
+# port of terminaltexteffects, which has no Debian package. Debian ships the
+# upstream Python original under this name, and files/usr/local/bin/ttfx runs it
+# under ttfx's own name (omarchy-screensaver finds and kills the effect with
+# `pgrep/pkill -x ttfx`, so the process name has to stay ttfx).
+python3-terminaltexteffects
 
 # --- xdg / theme integration ------------------------------------------------
 xdg-user-dirs

@@ -144,9 +144,12 @@ TIMEZONE="${TIMEZONE:-America/Mexico_City}"
 # ---------------------------------------------------------------------------
 ROOTFS="${ROOTFS:-$WORK_DIR/rootfs-$DEVICE}"
 KERNEL_STAGE="${KERNEL_STAGE:-$WORK_DIR/kernel-stage-$KERNEL_FLAVOR}"
+# omasnap is built from source by build-omasnap.sh (no Debian package) and
+# staged as a tree, so install-omasnap.sh and check-system.sh agree on one path.
+OMASNAP_STAGE="${OMASNAP_STAGE:-$WORK_DIR/omasnap-stage}"
 KPART="${KPART:-$WORK_DIR/$DEVICE.vmlinuz.kpart}"
 
 export REPO_DIR BUILD_ROOT WORK_DIR SRC_DIR DEVICE DEVICE_DIR KERNEL_DIR
-export UI UIS_DIR UI_DIR WIFI_DIR
+export UI UIS_DIR UI_DIR WIFI_DIR OMASNAP_STAGE
 export LOCALE TIMEZONE
 export BOOT_SIZE_MIB BOOT_FS KERNEL_RELEASE

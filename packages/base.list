@@ -44,6 +44,13 @@ rsync
 # scripts/check-system.sh (it SKIPs those checks without it), and cfg80211 only
 # logs "failed to load regulatory.db" if wireless-regdb is missing too.
 iw
+# file: omarchy-transcode and the terminal file previews read a MIME type with
+# it; without it the transcode menu cannot tell a picture from a video, and the
+# fzf preview in the shell's aliases shows nothing.
+file
+# ping: omarchy-debug's network reachability check calls it (Debian's base has
+# no ping; iputils-ping is what Arch's base installs as `ping`).
+iputils-ping
 
 # audio
 # alsa-utils provides /usr/sbin/alsactl. On card add, udev
