@@ -457,7 +457,23 @@ uncommitted changes, since those do not travel into the image.
   one (`0xAA55` signature plus a `0xEE` entry). Run `parted -s <dev> mktable gpt` first — this is
   why pmbootstrap does it too — then `cgpt create` / `cgpt add` on top of it.
 - After writing the table, refresh the kernel's view with `partx -d` + `partx -a`
-  (`blockdev --rereadpt` returns `EBUSY` on this microSD card).
+  (`blockdev --rereadpt` returns `EBUSY` on this microSD card). `partx` may answer
+  `error deleting partition 1` / `error adding partition 1` and still do its job for the rest: p1's
+  LBA range is identical before and after, so its mapping never has to change, and `lsblk` then
+  reports the new `p3` size. What matters is the size, not `partx`'s exit status.
+- **Writing an image onto a larger device leaves the old secondary GPT at the end of the device**,
+  because the image's own backup table travels with it (at the image's size, not the device's).
+  `cgpt show` then prints `WARNING: One of the GPT headers/entries is invalid` and marks the stale
+  table `INVALID`, `gdisk`/`parted` talk about a backup not at the end of the disk. Nothing is
+  broken and nothing refuses to boot, because validation is *per header*, not per pair
+  (`firmware/lib/cgptlib/cgptlib_internal.c` in `vboot_reference`): `GptValidityCheck()` needs at
+  least **one** valid header and one valid entries set, `CheckHeader()` locates the secondary at
+  `drive_sectors - 1` (so the image's backup at 6.4 GiB is simply not consulted on a 14.8 GB card),
+  and a stale-but-locatable secondary is dropped by `HeaderFieldsSame()` instead of failing:
+  `gpt->valid_headers &= ~MASK_SECONDARY`. `GptInit()` then calls `GptRepair()`, which rebuilds the
+  secondary **in memory** from the primary (`gpt->modified |= GPT_MODIFIED_HEADER2`) — depthcharge
+  never writes it back. So a plain `dd` onto any card ≥ the image size boots; `cgpt repair <dev>`
+  (`sudo cgpt repair /dev/mmcblk1`) only silences the warning by writing that repaired table out.
 - `lsblk -nro PATH <disk>` lists the **disk first**, then its partitions: skip the first line when
   resolving `p1`/`p2`/`p3`. A wrong index here formats the whole disk instead of a partition.
 - The tools needed **on the device** are three separate Debian packages and it is easy to install
@@ -751,6 +767,23 @@ cannot check is the reason `check-system.sh` exists: the firmware, the drivers a
    on this machine).
 2. `scripts/write-sd.sh /dev/mmcblk1`
 3. Insert the card, power on and pick **external disk** in the firmware menu.
+
+Booting a **released image** is the same path with step 2 replaced by
+`xz -dc google-asurada.img.xz | sudo dd of=/dev/mmcblk1 bs=4M conv=fsync` (6,442,450,944 bytes,
+~340 s / ~19 MB/s on this card). Two things surprise a verification of that write:
+
+- **Stop the automounter first, and read the card back before anything mounts it.** `udiskie`
+  (`/usr/share/omarchy/default/hypr/autostart.lua`: `udiskie --automount --no-notify --no-tray`,
+  a plain process, *no* `udiskie.service` in the user manager) mounts the new `p3` read-write as
+  soon as the partition table appears, and ext4 stamps its mount metadata into the superblock. A
+  `cmp` of the card against the image then fails on a perfectly good write: the first difference
+  lands ~1 KiB into `p3` (measured at byte 675,284,013 = p3's start 675,282,944 + 1,069, inside
+  `s_mtime`/`s_mnt_count`), `dmesg` records `EXT4-fs (mmcblk1p3): mounted filesystem … r/w`
+  between the write and the comparison, and the same card compares equal once it is rewritten
+  with `kill $(pgrep -f 'udiskie --automount')` in force. Re-start it afterwards the way Hyprland
+  does, or it simply comes back at the next login.
+- The GPT warning that comes with a card larger than the image is expected and harmless; see the
+  `cgpt` section above for why, and for `cgpt repair`.
 
 ### The firmware menu (this machine)
 

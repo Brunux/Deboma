@@ -50,8 +50,11 @@ card and pick **external disk** in the firmware menu. It comes up silently to a 
 user `brunux`, password `debian`, passwordless sudo. **Change the password** (`passwd`) before using
 it for anything real.
 
-The image is 6 GiB, so a larger card keeps the space after `p3` unused. To use the whole card,
-write the tarball instead: `write-sd.sh` sizes `p3` to the device it is given.
+The image is 6 GiB, so a larger card keeps the space after `p3` unused. Tools will then complain
+that the backup GPT is not at the end of the disk (the image's own backup travels with it, and the
+card's previous table is still at the end): that is harmless — the firmware validates the primary
+and rebuilds the secondary in memory — and `sudo cgpt repair /dev/mmcblk1` silences it. To use the
+whole card, write the tarball instead: `write-sd.sh` sizes `p3` to the device it is given.
 
 ```sh
 # join the parts first, and extract as root so owners, ACLs and xattrs survive
