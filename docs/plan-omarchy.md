@@ -353,6 +353,12 @@ is `omarchy`, `omarchy-debian` and `omarchy-desktop`. Names checked against the 
 of `omarchy`, `omarchy-desktop`, `omarchy-debian`, `omarchy-hayato`, `deboma-tools` exists in the
 archive.
 
+**Channel decision (taken):** the first packaged version is upstream's **`v4.0.5` tag**, not the
+branch commit this port pins. `omarchy-next` from `quattro` head is built by the same `debian/` for
+anyone who needs something only the branch has — and the audit reports the delta (532 vs 449
+commands) so a fix the desktop actually needs is carried as a patch into the release channel
+instead of the port drifting silently off releases.
+
 Two policy frictions, decided here so the phases do not rediscover them:
 
 - **`bat`.** Debian's `bat` installs `/usr/bin/batcat`, because `/usr/bin/bat` belongs to
@@ -613,8 +619,8 @@ in CI; `omarchy-next` from `quattro` head; trixie backports if the archive ever 
   `pool` to object storage and keep `dists` on Pages.
 - **forky only.** Debian stable's Hyprland/Quickshell are older than the shell needs; the README
   says so rather than pretend a trixie install works.
-- **Open:** does `omarchy-desktop` depend on `omarchy` (release) or `omarchy | omarchy-next`
-  (either)? Proposed: the release, with `omarchy-next` an explicit install. Decide in P4 with the
-  audit's delta in hand.
+- **Decided:** `omarchy-desktop` depends on `omarchy` (the release channel), with `omarchy-next` an
+  explicit install for anyone who wants `quattro` head. `Conflicts`/`Replaces` keep exactly one
+  channel on disk, since both own `/usr/share/omarchy`.
 - **Open:** whether the kernel package or `deboma-tools` owns the `zz-kpart` hook (a kernel-only
   user would then get p1 updates without the doctor). Decide in P7, when the hook is written.
