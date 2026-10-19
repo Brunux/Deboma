@@ -1,4 +1,4 @@
-debian-aarch64 system report  2026-10-19 01:07:15 CST
+debian-aarch64 system report  2026-10-19 01:33:54 CST
   ----  UI: omarchy
 
 ==> Boot
@@ -22,7 +22,7 @@ debian-aarch64 system report  2026-10-19 01:07:15 CST
   OK    swap active: /dev/zram0
   OK    /boot is a separate filesystem (/dev/mmcblk0p2) matching /etc/fstab
   OK    the running kernel's vmlinuz is on /boot
-  OK    root filesystem 18% used
+  OK    root filesystem 28% used
 
 ==> Display and GPU
   OK    display connected on card1-eDP-1
@@ -85,8 +85,8 @@ debian-aarch64 system report  2026-10-19 01:07:15 CST
   OK    current theme: tokyo-night
   OK    313 omarchy-* command(s) on PATH
   OK    the menu extension is in place (~/.config/omarchy/extensions/omarchy-menu.jsonc)
-  OK    the Update > Channel commands are off PATH (their rows die on pacman)
-  OK    omarchy-update-time is on PATH: the Update > Time row resyncs the clock
+  OK    the Update > Channel commands have no /usr/bin link (their rows die on pacman)
+  OK    omarchy-update-time has its /usr/bin link: the Update > Time row resyncs the clock
   OK    awk keeps line terminators (gawk RT): the theme templates render multiline
   OK    the generated theme files keep their line breaks
   OK    JetBrainsMono Nerd Font resolves to a monospace face (JetBrains Mono)

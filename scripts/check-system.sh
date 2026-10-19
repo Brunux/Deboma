@@ -616,8 +616,8 @@ section "Omarchy"
 	# Two ends of the same audit. The Update > Channel rows ran
 	# omarchy-channel-set, which rewrites pacman's mirrorlist and sources
 	# install/helpers/pacman.sh - a file this port does not vendor, so the row
-	# died before doing anything; the whole family is off PATH now and the same
-	# EXCLUDE glob hides the rows. The other way round, omarchy-update-time is the
+	# died before doing anything; the whole family gets no /usr/bin link now and
+	# the same EXCLUDE glob hides the rows. The other way round, omarchy-update-time is the
 	# one omarchy-update* command that works here unchanged (it only restarts
 	# systemd-timesyncd, the NTP client packages/base.list adds on purpose), so it
 	# sits in KEEP and the Update > Time row stays visible. Test the /usr/bin link
@@ -629,13 +629,13 @@ section "Omarchy"
 		[ -e "/usr/bin/$_c" ] && _archonly="$_archonly $_c"
 	done
 	if [ -z "$_archonly" ]; then
-		ok "the Update > Channel commands are off PATH (their rows die on pacman)"
+		ok "the Update > Channel commands have no /usr/bin link (their rows die on pacman)"
 	else
-		fail "still linked:$_archonly - the Update > Channel rows die on pacman (uis/omarchy/setup.sh EXCLUDE)"
+		fail "still linked in /usr/bin:$_archonly - the Update > Channel rows die on pacman (uis/omarchy/setup.sh EXCLUDE)"
 	fi
 	[ -x /usr/bin/omarchy-update-time ] &&
-		ok "omarchy-update-time is on PATH: the Update > Time row resyncs the clock" ||
-		warn "omarchy-update-time is off PATH: the Update > Time row does nothing (it belongs in KEEP)"
+		ok "omarchy-update-time has its /usr/bin link: the Update > Time row resyncs the clock" ||
+		warn "omarchy-update-time has no /usr/bin link: the Update > Time row is not offered (it belongs in KEEP)"
 	# omarchy-theme-set-templates renders every *.tpl with `awk` and preserves the
 	# line breaks with gawk's RT (the record terminator). Debian's default awk is
 	# mawk, where RT is empty, so every generated theme file collapses into one
@@ -801,6 +801,19 @@ section "Declared packages"
 if [ -n "$REPO" ] && have dpkg-query; then
 	_missing=""
 	_count=0
+	# A read taken while apt/dpkg is working on the database answers "no packages
+	# found matching rsync" for a package that *is* installed - observed as a
+	# spurious `FAIL declared but not installed: rsync` in a report taken while
+	# scripts/00-deps.sh was installing. dpkg-query cannot be asked to tell the
+	# two apart (an unreadable database and an unknown name both exit 1), so a
+	# package manager in the middle of a run makes this section SKIP: a check
+	# that goes red without a regression breaks the rule this script exists for.
+	_pkgmgr() {
+		for _p in apt apt-get dpkg unattended-upgrade packagekitd; do
+			pgrep -x "$_p" >/dev/null 2>&1 && return 0
+		done
+		return 1
+	}
 	# Only the UI this system booted; the other uis/*/packages.list belongs to a
 	# desktop that is not installed here (see the _UI note above).
 	_ui_lists="$REPO"/uis/*/packages.list
@@ -816,7 +829,9 @@ if [ -n "$REPO" ] && have dpkg-query; then
 			grep -q 'install ok installed' <<<"$_st" || _missing="$_missing $_pkg"
 		done <"$_list"
 	done
-	if [ -z "$_missing" ]; then
+	if [ -n "$_missing" ] && _pkgmgr; then
+		skip "a package manager is running, so dpkg's answer is not trustworthy: $_count declared package(s) not checked"
+	elif [ -z "$_missing" ]; then
 		ok "all $_count declared package(s) are installed"
 	else
 		fail "declared but not installed:$_missing"

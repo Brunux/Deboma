@@ -61,9 +61,9 @@ file and the running shell's `passwordPam`, `omasnap`, the shell-environment
 helpers (`starship`, `bat`, `lua`, `notify-send`), `xkbcli` and `~/.bashrc`
 sourcing Omarchy's rc. Three are from the second round, which audited the command
 menu behind the manual's feature list: the generated row-hiding extension is in
-place, the `Update > Channel` commands are off PATH (their rows died on pacman),
-and `omarchy-update-time` is on it (its row resyncs the clock). The link count
-went `314 → 313` in the same step: two `omarchy-channel-*` links pruned, one
+place, the `Update > Channel` commands have no `/usr/bin` link (their rows died on
+pacman), and `omarchy-update-time` has one (its row resyncs the clock). The link
+count went `314 → 313` in the same step: two `omarchy-channel-*` links pruned, one
 `omarchy-update-time` added.
 
 The audit also corrected one check that was not wrong about the port but about
@@ -75,6 +75,15 @@ this report caught that (a FAIL that no change of mine had caused, on a system
 that had last used polkit during the lock-screen tests), and the check now asks
 what has to hold: that the D-Bus service file exists and the daemon can be
 started.
+
+A second, smaller correction came out of re-taking this report while
+`scripts/00-deps.sh` was installing: the declared-package check read `rsync` as
+**missing**, because a `dpkg-query` taken while apt holds the database answers
+"no packages found matching rsync" for a package that is installed. dpkg-query
+cannot be asked to tell that apart from an unknown name (both exit 1), so the
+section now SKIPs — naming the count — when a package manager is running, and the
+report above was retaken with one idle. Same rule as polkit: a check that goes
+red without a regression is worse than a check that abstains.
 
 Like the card re-run above, this is **not** a clean rebuild: the audit's fixes
 were applied by hand to the running system (the four new files, `apt install`

@@ -699,7 +699,10 @@ profiles, the clock, the `fstab` UUID, the kernel partition holding a signed FIT
 there is a regression, not a hypothetical. It also has to be *right* about the state it asserts: the
 `polkitd is active` check was a FAIL on an idle desktop, because `polkit.service` is a static unit
 that D-Bus starts on demand and lets exit again, so what it now requires is that the daemon is
-activatable. It
+activatable. The declared-package check abstains the same way: it SKIPs (and says how many it left
+unchecked) while a package manager holds `dpkg`'s database, because a report taken mid-`apt` read an
+installed `rsync` as missing and `dpkg-query` cannot be asked to tell an unknown name from an
+unreadable database (both exit 1). It
 exits non-zero when something FAILs.
 
 `verify-rootfs.sh` is the other half of that pair, on the *build host*: it takes `$ROOTFS` (or an
