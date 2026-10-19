@@ -1,4 +1,4 @@
-debian-aarch64 system report  2026-10-19 00:09:44 CST
+debian-aarch64 system report  2026-10-19 00:48:30 CST
   ----  UI: omarchy
 
 ==> Boot
@@ -22,7 +22,7 @@ debian-aarch64 system report  2026-10-19 00:09:44 CST
   OK    swap active: /dev/zram0
   OK    /boot is a separate filesystem (/dev/mmcblk0p2) matching /etc/fstab
   OK    the running kernel's vmlinuz is on /boot
-  OK    root filesystem 10% used
+  OK    root filesystem 18% used
 
 ==> Display and GPU
   OK    display connected on card1-eDP-1
@@ -62,7 +62,7 @@ debian-aarch64 system report  2026-10-19 00:09:44 CST
 ==> Suspend and power
   OK    /sys/power/state advertises suspend (freeze mem disk)
   OK    systemd-logind is active (its button handling is the polkit-free suspend path)
-  OK    polkitd is active (session suspend via loginctl)
+  OK    polkitd is installed and D-Bus activated (idle now; loginctl suspend starts it)
   WARN  no suspend recorded in this boot: press the Lock key to test it
 
 ==> Clock
@@ -98,6 +98,7 @@ debian-aarch64 system report  2026-10-19 00:09:44 CST
   OK    the running shell reports a usable password lock
   OK    omasnap is installed (Print captures a screenshot)
   OK    the shell environment's helpers are installed (starship, bat, lua, notify-send)
+  OK    xkbcli is installed (keybindings view, keyboard-layout widget)
   OK    ~/.bashrc sources the Omarchy shell environment
 
 ==> Fonts and icons
@@ -107,15 +108,15 @@ debian-aarch64 system report  2026-10-19 00:09:44 CST
   OK    font family present: Symbols Nerd Font
 
 ==> Declared packages
-  OK    all 178 declared package(s) are installed
+  OK    all 179 declared package(s) are installed
 
 ==> Journal
-  WARN  42 error-priority line(s) this boot; the last ones:
-          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `energy_now' property: -6
-          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
-          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `capacity_level' property: -6
-          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
-          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `charge_now' property: -6
-          Oct 18 23:28:48 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+  WARN  52 error-priority line(s) this boot; the last ones:
+          Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
+          Oct 19 00:29:57 asurada kernel: power_supply sbs-8-000b: driver failed to report `time_to_empty_now' property: -5
 
-==> Summary  68 OK, 2 WARN, 0 FAIL
+==> Summary  69 OK, 2 WARN, 0 FAIL

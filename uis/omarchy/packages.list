@@ -28,6 +28,12 @@ xdg-desktop-portal-gtk
 xwayland
 hyprpicker
 hyprsunset
+# The bar's keyboard-layout widget asks `xkbcli list --load-exotic` for the label
+# of the active keymap, and the keybindings view resolves Hyprland's XKB keycodes
+# with `xkbcli compile-keymap`. Debian packages the CLI apart from the library it
+# belongs to, so the library alone leaves both falling back (and the menu logs
+# "xkbcli: not found" every time it opens).
+libxkbcommon-tools
 
 # --- the shell -------------------------------------------------------------
 # Omarchy v4's desktop shell is QML, not waybar/mako/walker: bar, launcher,

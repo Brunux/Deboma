@@ -166,11 +166,14 @@ is gone).
 ### Second audit: the installed eMMC system (2026-10-19)
 
 The card's own install (`scripts/install-emmc.sh`) was audited against the
-Omarchy manual, feature by feature, on the running desktop. The boot chain,
-Wi-Fi, Bluetooth, audio, suspend, battery and theme all behaved; what did **not**
-were the four features that depend on something Arch's `omarchy` package installs
-in a step this port has no counterpart for. Each one is silent — the key does
-nothing, no error is shown — which is exactly why they are now checks in
+Omarchy manual, feature by feature, on the running desktop: the commands, the key
+bindings, the bar panels and the CLI behind each of them. The boot chain, Wi-Fi,
+Bluetooth, audio, suspend, the battery, the theme, the bar, the menus and the
+lock behaved. What did **not** is in the table below — four features that depend
+on something Arch's `omarchy` package installs in a step this port has no
+counterpart for, and two that only asked for a tool Debian packages under
+another name. Each one is silent — the key does nothing, no error is shown —
+which is exactly why every one of them is now a check in
 `scripts/check-system.sh`.
 
 | Symptom | What it actually was | Fix |
@@ -182,7 +185,9 @@ nothing, no error is shown — which is exactly why they are now checks in
 | `ls` was Debian's, no `ff`/`ll`, no prompt | nothing sourced `$OMARCHY_PATH/default/bashrc`; Debian's `~/.bashrc` was all there was. | `setup.sh` appends the `source` line to Debian's `~/.bashrc` (upstream replaces the file when it is a known default; appending keeps Debian's history/lesspipe settings). |
 | `bat: command not found` (the `MANPAGER`, the fzf previews) | Debian's binary is `batcat`. | `setup.sh` links `/usr/local/bin/bat`. |
 | No prompt, empty keybindings view, no terminal notifications | `starship`, `lua` and `notify-send` were missing. | `starship`, `lua5.4` and `libnotify-bin` in `packages.list`. |
+| The keybindings cheat sheet logged `xkbcli: not found` every time it opened, and the bar's keyboard-layout label fell back | `xkbcli` is what names Hyprland's XKB keycodes for the cheat sheet and maps the active keymap to its short label; Debian ships the CLI in **`libxkbcommon-tools`**, apart from the library it belongs to. | `libxkbcommon-tools` in `packages.list`; the cheat sheet now lists 235 bindings with a clean stderr. |
 | `omarchy transcode` failed on every file | `file` was missing, so the MIME sniff failed before the menu could tell a picture from a video. | `file` in `packages/base.list`; `omarchy-transcode`/`-ascii` are no longer excluded (they only ever needed tools this port installs). |
+| `omarchy theme list` printed `find: ~/.config/omarchy/themes/: No such file or directory` before its 23 themes | that directory is where a theme of your own goes, and nothing creates it on a fresh v4 install: upstream's `omarchy-upgrade-to-quattro` does it only for systems coming from v3. | `setup.sh` creates it, which is also the chapter 43 workflow's starting point. |
 | The Share menu opened flows that died on `command not found` | every Share row funnels into **LocalSend**, which Debian does not package. | the parent row `trigger.share` is hidden, which takes the submenu with it. A submenu parent has no `action`, so `setup.sh`'s generator now tests the row *id* before it requires an action. |
 | `Setup > Input Methods` died on `command not found` | it calls `omarchy-setup-input`, which installs Fcitx5 through `omarchy-pkg-add`. | excluded with the rest of the Arch installers; the key binding stays and does nothing without `fcitx5`. |
 
@@ -199,7 +204,7 @@ nothing, no error is shown — which is exactly why they are now checks in
 - **Screenshots.** `omarchy-capture-screenshot fullscreen copy` puts a
   1366×912 PNG on the clipboard, and the interactive overlay (region picker,
   hint bar, key legend) renders and closes on Escape.
-- **`check-system.sh`** on the eMMC install: **68 OK, 2 WARN, 0 FAIL**
+- **`check-system.sh`** on the eMMC install: **69 OK, 2 WARN, 0 FAIL**
   (`reports/2026-10-19-emmc-desktop.txt`; the WARNs are the `sbs-8-000b`
   fuel-gauge noise and no suspend recorded in that boot).
 
@@ -223,6 +228,22 @@ nothing, no error is shown — which is exactly why they are now checks in
   `us`, and the touchpad defaults survive (checked with `hyprctl getoption`).
   Making it the port's default is a two-line change in `setup.sh` if it should
   apply to every install.
+- **`omarchy toggle screensaver` writes a flag that nothing reads.** In this
+  pinned revision the screensaver's availability is the configured timeout
+  (`idle.screensaver`, 150 s in `shell/shell.qml`), read by
+  `shell/plugins/services/idle/Service.qml`; no file under
+  `~/.local/state/omarchy/toggles/` is consulted for it, although the toggle
+  writes one. That is upstream's, not the port's — the same on Arch — and
+  `check-system.sh` checks the renderer and the timers instead of the flag
+  rather than patching the shell to honour it.
+- **The two key bindings with no tool behind them**, kept bound exactly as
+  upstream binds them: `SUPER + CTRL + Q` (`XF86Calculator`) execs **`omacalc`**,
+  and `SUPER + I` / `SUPER + SHIFT + I` cycle **Fcitx5**. Both are deferred with
+  the rest of the `omarchy-pkgs` set (F8) and their menu rows are gone, so the
+  keys are the only trace: they log one line to the compositor's stderr and
+  return. Debian does package calculators and Fcitx5, but shipping a *different*
+  application behind an upstream binding, and an input-method engine upstream
+  configures through its own installer, is F8 work rather than a substitution.
 
 ### Package substitutions
 
@@ -297,7 +318,7 @@ this UI, on a card written from `commit 85d32fc` (the card's `REVISION` and
 
 The same system was then installed to the internal eMMC
 (`scripts/install-emmc.sh`, from the running card) and audited there:
-`reports/2026-10-19-emmc-desktop.txt` is that report — **68 OK, 2 WARN, 0 FAIL**,
+`reports/2026-10-19-emmc-desktop.txt` is that report — **69 OK, 2 WARN, 0 FAIL**,
 captured with `/` on `/dev/mmcblk0p3` and the kernel partition resolved from the
 `kern_guid` in `/proc/cmdline`.
 

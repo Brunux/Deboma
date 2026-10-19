@@ -33,9 +33,12 @@ means for the build below:
   `scripts/00-deps.sh` installs and adds ~6 minutes before the rootfs step.
 - `check-system.sh` gained one check per finding (the screensaver renderer and its seeded art, the
   lock screen's PAM file and the running shell's `passwordPam`, `omasnap`, the shell-environment
-  helpers, `~/.bashrc` sourcing Omarchy's rc), so the rebuild's report has **eight more OKs** than
-  the counts quoted elsewhere in this file.
-- `reports/2026-10-19-emmc-desktop.txt` is the audit's report — **68 OK, 2 WARN, 0 FAIL** — taken on
+  helpers, `xkbcli` and `~/.bashrc` sourcing Omarchy's rc), so the rebuild's report has **nine more
+  OKs** than the counts quoted elsewhere in this file. The same run also caught a check that was
+  wrong about itself rather than about the port: `polkitd is active` was a FAIL on an idle desktop,
+  because `polkit.service` is static and D-Bus starts it on demand, so it now requires that the
+  daemon is activatable.
+- `reports/2026-10-19-emmc-desktop.txt` is the audit's report — **69 OK, 2 WARN, 0 FAIL** — taken on
   the eMMC install *after* the fixes were applied by hand, so it documents the hardware and the new
   checks, not the image. The clean-rebuild report of § *Then: close F7* is still what the release
   needs. `docs/releases/v0.2.0.md` now carries the audit; if these fixes should ship as `v0.2.1`

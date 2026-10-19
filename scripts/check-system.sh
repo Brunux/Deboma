@@ -510,7 +510,22 @@ section "Suspend and power"
 grep -qw mem /sys/power/state 2>/dev/null && ok "/sys/power/state advertises suspend ($(cat /sys/power/state))" ||
 	fail "no 'mem' in /sys/power/state: the kernel cannot suspend"
 check_svc systemd-logind "systemd-logind is active (its button handling is the polkit-free suspend path)"
-check_svc polkit "polkitd is active (session suspend via loginctl)"
+# polkit.service is a **static** unit with no [Install]: polkitd is started by
+# D-Bus, on the first authorization request, and exits again when it has nothing
+# to wait for. "is-active" is therefore false on an idle desktop - the normal
+# state - which made this a FAIL that came and went between boots. What has to
+# hold is that D-Bus can start it.
+svc polkit
+_polkit=$?
+if [ "$_polkit" = 0 ]; then
+	ok "polkitd is running (session suspend via loginctl is authorized)"
+elif [ "$_polkit" = 2 ]; then
+	skip "cannot tell whether polkitd is usable (not running under systemd)"
+elif [ -e /usr/share/dbus-1/system-services/org.freedesktop.PolicyKit1.service ]; then
+	ok "polkitd is installed and D-Bus activated (idle now; loginctl suspend starts it)"
+else
+	fail "polkit is missing or not D-Bus activatable: loginctl suspend from a session is denied"
+fi
 _susp="$(asroot journalctl -b --no-pager | grep -c 'PM: suspend entry')"
 [ "${_susp:-0}" -ge 1 ] && ok "$_susp suspend/resume cycle(s) recorded in this boot" ||
 	warn "no suspend recorded in this boot: press the Lock key to test it"
@@ -716,6 +731,15 @@ section "Idle, lock and shell environment"
 		ok "the shell environment's helpers are installed (starship, bat, lua, notify-send)"
 	else
 		warn "missing shell environment helper(s):$_missing_env (the prompt, the man pager, the keybindings view or terminal notifications degrade)"
+	fi
+	# xkbcli (libxkbcommon-tools) is what the keybindings view uses to name
+	# Hyprland's XKB keycodes and what the bar's keyboard-layout widget uses to
+	# label the active keymap. Both have fallbacks, so a missing xkbcli is noise
+	# in the journal and a coarser label rather than a broken key.
+	if have xkbcli; then
+		ok "xkbcli is installed (keybindings view, keyboard-layout widget)"
+	else
+		warn "xkbcli is missing (libxkbcommon-tools): the keybindings view logs an error and the layout label falls back"
 	fi
 	if grep -qsF '/usr/share/omarchy/default/bashrc' "$HOME/.bashrc" 2>/dev/null; then
 		ok "~/.bashrc sources the Omarchy shell environment"

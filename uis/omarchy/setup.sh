@@ -173,6 +173,15 @@ else
 	warn "$OMARCHY_PATH/logo.txt or icon.txt is missing; the screensaver has nothing to paint"
 fi
 
+# Where a theme of your own goes. omarchy-theme-list, -extras, -install and
+# -plymouth-list all read ~/.config/omarchy/themes, and `find` on the missing
+# directory writes "No such file or directory" to stderr ahead of the 23 system
+# themes. omarchy-upgrade-to-quattro creates it for systems coming from v3 (its
+# own `mkdir -p`), which a fresh v4 install never runs - so the port creates it,
+# and with it the place the manual's "write your own theme" chapter assumes.
+log "Creating ~/.config/omarchy/themes"
+install -d -m 0755 -o "$USERNAME" -g "$USERNAME" "$HOME/.config/omarchy/themes"
+
 # ~/.bashrc: Debian seeds it from /etc/skel, and nothing sourced Omarchy's shell
 # environment, so `ls` stayed Debian's ls, the ff/ll helpers did not exist,
 # zoxide and fzf were never initialised and starship never drew the prompt.

@@ -382,6 +382,15 @@ uncommitted changes, since those do not travel into the image.
   menu can tell a picture from a video - without it the rows were excluded outright. `file` is in
   `packages/base.list` now and the two commands are back on PATH. `omarchy-debug` reaches the
   network with `ping`, which Arch's base provides and Debian's does not (`iputils-ping`).
+- **`xkbcli`**: Debian splits the CLI out of libxkbcommon into **`libxkbcommon-tools`**, and the
+  pinned tree calls it twice: the bar's keyboard-layout widget (`xkbcli list --load-exotic`, to
+  label the active keymap) and the keybindings view (`xkbcli compile-keymap`, to name the XKB
+  keycodes `hyprctl binds` reports as `code:`). Both fall back, so a missing xkbcli is a coarser
+  label plus `xkbcli: not found` on stderr every time the cheat sheet opens, not a dead key; it is
+  in `packages.list` all the same. Related: `omarchy theme list` runs `find ~/.config/omarchy/themes`
+  unconditionally, so a system where the user never installed a theme prints a `find` error before
+  the 23 packaged ones - `setup.sh` creates that directory (upstream's
+  `omarchy-upgrade-to-quattro` creates it only on systems upgraded from v3).
 - **omasnap**: `omarchy-capture-screenshot` ends in `exec omasnap`, so Print and Super+Shift+S do
   nothing without the binary, and Debian packages neither omasnap nor satty. The port builds
   upstream's own tool from `omacom/omasnap` at the tag pinned in `uis/omarchy/omasnap.version`
@@ -652,8 +661,11 @@ port has already hit — keyd swallowing `KEY_SLEEP`, greetd's `vt`/user, the UC
 missing `default` PCM, the backlight udev rule, the font fallback, `interface-name=` in the Wi-Fi
 profiles, the clock, the `fstab` UUID, the kernel partition holding a signed FIT, the screensaver's
 `ttfx` and its branding file, the lock screen's PAM file (and the running shell's `passwordPam`),
-`omasnap`, the shell-environment helpers and `~/.bashrc` sourcing Omarchy's rc — so a FAIL there is
-a regression, not a hypothetical. It
+`omasnap`, the shell-environment helpers, `xkbcli` and `~/.bashrc` sourcing Omarchy's rc — so a FAIL
+there is a regression, not a hypothetical. It also has to be *right* about the state it asserts: the
+`polkitd is active` check was a FAIL on an idle desktop, because `polkit.service` is a static unit
+that D-Bus starts on demand and lets exit again, so what it now requires is that the daemon is
+activatable. It
 exits non-zero when something FAILs.
 
 ### Boot from microSD

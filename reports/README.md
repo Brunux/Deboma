@@ -49,24 +49,34 @@ present.
 ## 2026-10-19-emmc-desktop.txt
 
 The same UI installed to the **internal eMMC** (`scripts/install-emmc.sh`, run
-from the running card), audited against the Omarchy manual: **68 OK, 2 WARN,
+from the running card), audited against the Omarchy manual: **69 OK, 2 WARN,
 0 FAIL**. `/` is `/dev/mmcblk0p3` and the kernel partition is the one the firmware
 picked (`kern_guid` out of `/proc/cmdline`), so this is the install the machine
 actually runs.
 
-The eight extra OKs over the first report are the checks the audit added
+The nine extra OKs over the first report are the checks the audit added
 (`scripts/check-system.sh`, "Idle, lock and shell environment"): the screensaver
 renderer and its seeded art, the lock screen's PAM file and the running shell's
-`passwordPam`, `omasnap`, the shell-environment helpers, and `~/.bashrc` sourcing
-Omarchy's rc.
+`passwordPam`, `omasnap`, the shell-environment helpers (`starship`, `bat`,
+`lua`, `notify-send`), `xkbcli` and `~/.bashrc` sourcing Omarchy's rc.
+
+The audit also corrected one check that was not wrong about the port but about
+itself: `polkitd is active` was asserted with `systemctl is-active`, and
+`polkit.service` is a **static** unit with no `[Install]` — polkitd is started by
+D-Bus on the first authorization request and exits when there is nothing left to
+answer, so an idle desktop legitimately reports it inactive. The first run of
+this report caught that (a FAIL that no change of mine had caused, on a system
+that had last used polkit during the lock-screen tests), and the check now asks
+what has to hold: that the D-Bus service file exists and the daemon can be
+started.
 
 Like the card re-run above, this is **not** a clean rebuild: the audit's fixes
 were applied by hand to the running system (the four new files, `apt install`
-of `starship`/`libnotify-bin`/`lua5.4`/`file`/`iputils-ping`, the `bat` symlink,
-the `~/.bashrc` line, the menu extension) before the script ran, so the report
-documents the *hardware* and the new checks, not the image as published. A
-`UI=omarchy` rebuild carries the same fixes and is what the next release
-installs.
+of `starship`/`libnotify-bin`/`lua5.4`/`file`/`iputils-ping`/`libxkbcommon-tools`,
+the `bat` symlink, the `~/.bashrc` line, the theme directory, the menu extension)
+before the script ran, so the report documents the *hardware* and the new checks,
+not the image as published. A `UI=omarchy` rebuild carries the same fixes and is
+what the next release installs.
 
 Both WARNs are the expected ones: the `sbs-8-000b` fuel-gauge noise, and no
 suspend recorded in that boot — the Lock key had not been pressed since
